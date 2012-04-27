@@ -32,6 +32,6 @@ directionVector cohesion(boid * boidArr, int index);
 directionVector aversion(boid * boidArr, int index);
 directionVector collision(boid * boidArr, int index);
 directionVector alignment(boid * boidArr, int index);
-directionVector exit(boid * boidArr, int index);
+directionVector moveToExit(boid * boidArr, int index);
 
 #endif
