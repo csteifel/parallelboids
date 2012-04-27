@@ -1,3 +1,3 @@
-#include "boid.h"
+#include "inc.h"
 
 
