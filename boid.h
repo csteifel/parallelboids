@@ -17,21 +17,21 @@ struct directionVector {
 
 typedef struct directionVector directionVector;
 
+
 struct boid {
 	int xpos;
 	int ypos;
 	directionVector velocity;
 };
 
-
-
 typedef struct boid boid;
 
-
-struct directionVector cohesion(boid * boidArr, int index);
-struct directionVector aversion(boid * boidArr, int index);
-struct directionVector collision(boid * boidArr, int index);
-struct directionVector alignment(boid * boidArr, int index);
-struct directionVector exit(boid * boidArr, int index);
+//List prototypes for boid acceleration calculation
+//All should return directional vectors for acceleration calculation
+directionVector cohesion(boid * boidArr, int index);
+directionVector aversion(boid * boidArr, int index);
+directionVector collision(boid * boidArr, int index);
+directionVector alignment(boid * boidArr, int index);
+directionVector exit(boid * boidArr, int index);
 
 #endif
