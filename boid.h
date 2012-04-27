@@ -1,12 +1,11 @@
 #ifndef boid_h
 #define boid_h
 
-
-#define COHESION_WEIGHT
-#define ALIGNMENT_WEIGHT
-#define AVERSION_WEIGHT
-#define COLLISION_WEIGHT 
-#define EXIT_WEIGHT
+#define COHESION_WEIGHT 1
+#define ALIGNMENT_WEIGHT 1
+#define AVERSION_WEIGHT 1
+#define COLLISION_WEIGHT 1
+#define EXIT_WEIGHT 1
 
 
 //Used for velocity and acceleration
@@ -44,7 +43,9 @@ directionVector collision(boid * boidArr, int index);
 directionVector alignment(boid * boidArr, int index);
 directionVector moveToExit(boid * boidArr, int index);
 
+#define CONTAINEREXTEND 10
+
 //boidContainer functions
-void boidInsert(boid insert);
+int boidInsert(boidContainer * container, boid * insert);
 
 #endif
