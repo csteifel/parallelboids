@@ -1,7 +1,7 @@
 
 
 all: boid main setup
-	gcc -Wall -o boids main.o boid.o
+	gcc -Wall -o boids main.o boid.o setup.o
 
 setup: setup.c
 	gcc -c -Wall -o setup.o setup.c
