@@ -1,1 +1,1 @@
-void setupSimulation(char * fileName, boidContainer * boids, int ** board);
+void setupSimulation(char * fileName, boidContainer * boids, short ** board);
