@@ -1,8 +1,10 @@
 
 
-all: boid main
+all: boid main setup
 	gcc -Wall -o boids main.o boid.o
 
+setup: setup.c
+	gcc -c -Wall -o setup.o setup.c
 boid: boid.c
 	gcc -c -Wall -o boid.o boid.c
 
