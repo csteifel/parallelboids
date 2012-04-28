@@ -9,6 +9,7 @@ int numBoids = 0;
 
 int main(int argc, char * argv[]){
 	boidContainer container;
+	goalContainer goals;
 	char * fileName = NULL;
 	short ** map = NULL;
 	unsigned int mapwidth, mapheight, i, j;
@@ -21,13 +22,17 @@ int main(int argc, char * argv[]){
 		exit(1);
 	}
 
-	//Initialize container
+	//Initialize containers
 	container.size = 0;
 	container.alloc = 10;
-	container.boidArr = calloc(container.alloc, sizeof(boid));
+	container.boidArr = (boid *) calloc(container.alloc, sizeof(boid));
+	
+	goals.size = 0;
+	goals.alloc=10;
+	goals.pos = (int **) calloc(goals.alloc, sizeof(int *));
 
 	//Set up the map and put all the boids in a boid container
-	setupSimulation(fileName, &container, &map, &mapwidth, &mapheight);
+	setupSimulation(fileName, &container, &goals, &map, &mapwidth, &mapheight);
 
 	for(j = 0; j < mapheight; j++){
 		for(i = 0; i < mapwidth; i++){
@@ -41,6 +46,12 @@ int main(int argc, char * argv[]){
 		printf("Boid %d position %d %d\n", i, container.boidArr[i].xpos, container.boidArr[i].ypos);
 	}
 
+
+	printf("Goals size: %d\n", (int) goals.size);
+	for(i = 0; i < goals.size; i++){
+		printf("Goal %d position %d %d\n", i, goals.pos[i][0], goals.pos[i][1]);
+	}
 	return 0;
 }
+
 

@@ -8,7 +8,7 @@ file encoding: 0 - barrier/unusable spot
 2 - boid in location
 3 - exit location
 */
-void setupSimulation(char * fileName, boidContainer * boids, short *** board, unsigned int * width, unsigned int * height){
+void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goals, short *** board, unsigned int * width, unsigned int * height){
 	FILE * fd = fopen(fileName, "r");
 	unsigned int i, j;
 	boid * newBoid = NULL;
@@ -37,9 +37,25 @@ void setupSimulation(char * fileName, boidContainer * boids, short *** board, un
 				newBoid = NULL;
 			}else if((*board)[i][j] == 3){
 				//Should add to a list of exits so that its easy to figure out closest exit don't need to go through entire map
-				
+				addGoal(goals, i, j);
 			}
 		}
 	}
 }
 
+void addGoal(goalContainer * goals, int x, int y){
+	//Check for need to extend container
+	if(goals->size == goals->alloc){
+		goals->alloc += CONTAINEREXTEND;
+		
+		if((goals->pos = (int **) realloc(goals->pos, goals->alloc * sizeof(int *))) == NULL){
+			fprintf(stderr, "Error extending goal conatiner, quitting...\n");
+			exit(1);
+		}
+	}
+
+	goals->pos[goals->size] = (int *) calloc(2, sizeof(int));
+	goals->pos[goals->size][0] = x;
+	goals->pos[goals->size][1] = y;
+	++goals->size;
+}
