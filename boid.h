@@ -11,6 +11,7 @@
 
 #define ALIGNWIDTH 4
 #define COHEREWIDTH 4
+#define SEPARATIONWIDTH 2
 
 //Used for velocity and acceleration
 struct directionVector {
@@ -46,7 +47,6 @@ typedef struct boidContainer boidContainer;
 void moveBoid(const goalContainer * const goals, boidContainer * boidlist, int index);
 directionVector cohesion(const boidContainer * const boidlist, int index);
 directionVector aversion(const boidContainer * const boidlist, int index);
-directionVector collision(const boidContainer * const boidlist, int index);
 directionVector alignment(const boidContainer * const boidlist, int index);
 directionVector moveToExit(const goalContainer * const goals, const boidContainer * const boidlist, int index);
 

@@ -31,16 +31,13 @@ directionVector moveToExit(const goalContainer * const goals, const boidContaine
 	int i;
 	int * res;
 
-
 	exitVector.x = 0;
 	exitVector.y = 0;
 
 	for(i = 0; i < goals->size; i++){
 		res = goals->pos[i];
-		//We wan the closest goal
+		//We want the closest goal
 		if((abs(res[0] - boidlist->boidArr[index].xpos) + abs(res[1] - boidlist->boidArr[index].ypos)) < (abs(exitVector.x) + abs(exitVector.y)) || i == 0){
-			/*printf("Goals location %d %d\n", res[0], res[1]);
-			printf("Boid location: %d %d\n", boidlist->boidArr[index].xpos, boidlist->boidArr[index].ypos);*/
 			exitVector.x = res[0] - boidlist->boidArr[index].xpos;
 			exitVector.y = res[1] - boidlist->boidArr[index].ypos;
 		}
@@ -60,6 +57,10 @@ directionVector aversion(const boidContainer * const boidlist, int index){
 	for(i = 0; i < boidlist->size; i++){
 		if(i == index){
 			continue;
+		}
+		if((abs(boidlist->boidArr[index].xpos - boidlist->boidArr[i].xpos) + abs(boidlist->boidArr[index].ypos - boidlist->boidArr[i].ypos)) < SEPARATIONWIDTH){
+			aversionVec.x += boidlist->boidArr[i].xpos - boidlist->boidArr[index].xpos;
+			aversionVec.y += boidlist->boidArr[i].ypos - boidlist->boidArr[index].ypos;
 		}
 	}
 
@@ -131,11 +132,15 @@ directionVector cohesion(const boidContainer * const boidlist, int index){
 	return cohesVec;
 }
 
+
+//Add vector quantities with a weight
 inline void addVector(directionVector * addTo, const directionVector * const source, int weight){
 	addTo->x += source->x * weight;
 	addTo->y += source->y * weight;
 }
 
+
+//Limit boid movement to one block in one direction
 inline void limitVec(directionVector * limitWhat){
 	if(limitWhat->x == 0 && limitWhat->y == 0){
 		//Do nothing
@@ -149,20 +154,27 @@ inline void limitVec(directionVector * limitWhat){
 }
 
 void moveBoid(const goalContainer * const goals, boidContainer * boidlist, int index){
-	directionVector exitVec, cohVec, alignVec, averVec, collVec, acceleration;
+	directionVector exitVec, cohVec, alignVec, averVec, acceleration;
 	int i;
 
 	acceleration.x = 0;
 	acceleration.y = 0;
+
+
+	//Could possibly make these all execute in parallel as well
 	exitVec = moveToExit(goals, boidlist, index);
 	cohVec = cohesion(boidlist, index);
 	alignVec = alignment(boidlist, index);
+	averVec = aversion(boidlist, index);
 
-	addVector(&acceleration, &exitVec, 2);
-	//printf("Exit Acceleration %d x: %d y: %d\n", index, acceleration.x, acceleration.y);
+
+	//Add up vectors with weights
+	addVector(&acceleration, &exitVec, 3);
 	addVector(&acceleration, &cohVec, 1);
-	//printf("Acceleration %d x: %d y: %d\n", index, acceleration.x, acceleration.y);
 	addVector(&acceleration, &alignVec, 1);
+	addVector(&acceleration, &averVec, 2);
+
+	//Limit the vector to required speed
 	limitVec(&acceleration);
 
 	boidlist->boidArr[index].velocity = acceleration;
@@ -175,7 +187,6 @@ void moveBoid(const goalContainer * const goals, boidContainer * boidlist, int i
 		}
 	}
 	
-//	printf("Acceleration %d x: %d y: %d\n", index, acceleration.x, acceleration.y);
 }
 
 
