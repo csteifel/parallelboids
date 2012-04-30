@@ -27,7 +27,6 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 		for(i = 0; i < *width; i++){
 			printf("%d\n", fscanf(fd, "%1hd", &((*board)[i][j])));
 			(*blank)[i][j] = (*board)[i][j];
-			printf("%u %hd\n", i, (*board)[i][j]);
 			if((*board)[i][j] == 2){
 				(*blank)[i][j] = 1;
 				newBoid = (boid *) calloc(1, sizeof(boid));

@@ -3,7 +3,7 @@
 //Boid algorithm threaded approach
 
 //Start out with a limit on iterations until goal achievement is programmed
-#define ITERATIONS 30 
+#define ITERATIONS 9000 
 #define NUMTHREADS 20
 
 struct arguments {
@@ -181,7 +181,6 @@ int main(int argc, char * argv[]){
 	for(i = 0; i < container.size; i++){
 		printf("Boid %d position %d %d\n", i, container.boidArr[i].xpos, container.boidArr[i].ypos);
 	}
-
 
 	printf("Goals size: %d\n", (int) goals.size);
 	for(i = 0; i < goals.size; i++){
