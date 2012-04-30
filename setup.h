@@ -10,5 +10,5 @@ struct goalContainer {
 
 typedef struct goalContainer goalContainer;
 
-void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goals, short *** board, unsigned int * width, unsigned int * height);
+void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goals, short *** board, short *** blank, unsigned int * width, unsigned int * height);
 void addGoal(goalContainer * goals, int x, int y);

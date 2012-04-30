@@ -8,7 +8,7 @@ file encoding: 0 - barrier/unusable spot
 2 - boid in location
 3 - exit location
 */
-void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goals, short *** board, unsigned int * width, unsigned int * height){
+void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goals, short *** board, short *** blank, unsigned int * width, unsigned int * height){
 	FILE * fd = fopen(fileName, "r");
 	unsigned int i, j;
 	boid * newBoid = NULL;
@@ -16,17 +16,20 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 	fscanf(fd, "%u %u", width, height);
 
 	(*board) = (short **) calloc(*width, sizeof(short *));
+	(*blank) = (short **) calloc(*width, sizeof(short *));
 	for(i = 0; i < *width; i++){
 		(*board)[i] = (short *) calloc(*height, sizeof(short));
+		(*blank)[i] = (short *) calloc(*height, sizeof(short));
 	}
 	
 	//Go through parsing the file
 	for(j = 0; j < *height; j++){
 		for(i = 0; i < *width; i++){
 			printf("%d\n", fscanf(fd, "%1hd", &((*board)[i][j])));
+			(*blank)[i][j] = (*board)[i][j];
 			printf("%u %hd\n", i, (*board)[i][j]);
 			if((*board)[i][j] == 2){
-				(*board)[i][j] = 1;
+				(*blank)[i][j] = 1;
 				newBoid = (boid *) calloc(1, sizeof(boid));
 				newBoid->xpos = i;
 				newBoid->ypos = j;

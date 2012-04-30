@@ -1,6 +1,10 @@
 #include "inc.h"
 
 
+/* BOID FUNCTIONS
+	ALL FUNCTIONS IN THIS FILE SHOULD REENTRANT
+*/
+
 int boidInsert(boidContainer * container, boid * insert){
 	//Check for need to extend container
 	if(container->size == container->alloc){

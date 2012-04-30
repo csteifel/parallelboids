@@ -4,7 +4,7 @@
 
 //Start out with a limit on iterations until goal achievement is programmed
 #define ITERATIONS 30 
-#define NUMTHREADS 4
+#define NUMTHREADS 20
 
 struct arguments {
 	boidContainer * boidlist;
@@ -12,6 +12,33 @@ struct arguments {
 	int start;
 	int finish;
 };
+
+
+
+//Find the closest open spot on the map and place the boid there
+void findClosest(short *** map, int x, int y, int width, int height, int * positions){
+	int lookRadius = 1;
+	int i, j, placed = 0;
+
+	while(lookRadius < 2){
+		i = x - lookRadius;
+		i = (i < 0) ? 0 : i;
+		for(; i <= x + lookRadius && i < width; i++){
+			j = y - lookRadius;
+			j = (j < 0) ? 0 : j;
+			for(; j <= y + lookRadius && j < width; j++){
+				if((*map)[i][j] == 1){
+					positions[0] = i;
+					positions[1] = j;
+					placed = 1;
+				}
+			}
+		}
+		if(placed) break;
+		lookRadius++;
+	}
+}
+
 
 void * threadedMove(void * arg){
 	struct arguments * args = (struct arguments *) arg;
@@ -29,14 +56,21 @@ void * threadedMove(void * arg){
 }
 
 
-int step(boidContainer * boidlist, goalContainer * goals){
-	int i, count = 0, extras;
+int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *** blankMap, int width, int height){
+	int i, count = 0, extras, threadCount = NUMTHREADS;
 	struct arguments arguments[NUMTHREADS];
 	pthread_t threads[NUMTHREADS];
 
 	extras = boidlist->size % NUMTHREADS;
+	
+	
+	if(NUMTHREADS > boidlist->size){
+		threadCount = boidlist->size;
+	}
 
-	for(i = 0; i < NUMTHREADS; i++){
+
+	//Spawn threads and tell them who they have to deal with
+	for(i = 0; i < threadCount; i++){
 		arguments[i].boidlist = boidlist;
 		arguments[i].goals = goals;
 		
@@ -56,20 +90,64 @@ int step(boidContainer * boidlist, goalContainer * goals){
 		pthread_create(&threads[i], NULL, threadedMove, (void *) &arguments[i]);
 	}
 
-	for(i = 0; i < NUMTHREADS;i++){
+	//We are executing each step in lock step fashion so wait for the threads to finish
+	for(i = 0; i < threadCount;i++){
 		size_t x = 0;
 		pthread_join(threads[i], (void **) &x);
 		count += x;
 	}
+		
+	
+	for(i = 0; i < width; i++){
+		free((*map)[i]);
+		(*map)[i] = (short *) calloc(height, sizeof(short));
+		memcpy((*map)[i], (*blankMap)[i], height * sizeof(short));
+	}
+
+
+	//We need to reconcile the map now based on boid positions and check for people on top of each other
+	for(i = 0; i < boidlist->size; i++){
+		int location[2];
+
+		if(boidlist->boidArr[i].active == 1){
+			if((*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] == 1){
+				(*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] = 2;
+			}else if((*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] == 2){
+				//Move to nearest open spot simulates pushing
+				findClosest(map, boidlist->boidArr[i].xpos, boidlist->boidArr[i].ypos, width, height, location);
+				boidlist->boidArr[i].xpos = location[0];
+				boidlist->boidArr[i].ypos = location[1];
+
+				(*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] = 2;
+
+			}else if((*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] == 0){
+				printf("Error in placement\n");
+			}
+		}
+	}
 	
 	return count;
 }
+
+
+void printBoard(short ** map, int mapwidth, int mapheight){
+	int i, j;
+	for(j = 0; j < mapheight; j++){
+		for(i = 0; i < mapwidth; i++){
+			printf("%hd", map[i][j]);
+		}
+		printf("\n");
+	}
+	printf("\n\n");
+}
+
 
 int main(int argc, char * argv[]){
 	boidContainer container;
 	goalContainer goals;
 	char * fileName = NULL;
 	short ** map = NULL;
+	short ** blankMap = NULL;
 	unsigned int mapwidth, mapheight, i, j;
 
 	if(argc == 2){
@@ -90,7 +168,7 @@ int main(int argc, char * argv[]){
 	goals.pos = (int **) calloc(goals.alloc, sizeof(int *));
 
 	//Set up the map and put all the boids in a boid container
-	setupSimulation(fileName, &container, &goals, &map, &mapwidth, &mapheight);
+	setupSimulation(fileName, &container, &goals, &map, &blankMap, &mapwidth, &mapheight);
 
 	for(j = 0; j < mapheight; j++){
 		for(i = 0; i < mapwidth; i++){
@@ -111,9 +189,10 @@ int main(int argc, char * argv[]){
 	}
 
 	for(i = 0; i < ITERATIONS; i++){
-		if(!step(&container, &goals)){
+		if(!step(&container, &goals, &map, &blankMap, mapwidth, mapheight)){
 			break;
 		}
+		printBoard(map, mapwidth, mapheight);
 	}
 
 	printf("Completed in %d steps\n", i);
