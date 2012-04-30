@@ -25,7 +25,7 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 	//Go through parsing the file
 	for(j = 0; j < *height; j++){
 		for(i = 0; i < *width; i++){
-			printf("%d\n", fscanf(fd, "%1hd", &((*board)[i][j])));
+			fscanf(fd, "%1hd", &((*board)[i][j]));
 			(*blank)[i][j] = (*board)[i][j];
 			if((*board)[i][j] == 2){
 				(*blank)[i][j] = 1;
