@@ -3,16 +3,63 @@
 //Boid algorithm threaded approach
 
 //Start out with a limit on iterations until goal achievement is programmed
-#define ITERATIONS 40
+#define ITERATIONS 30 
+#define NUMTHREADS 4
+
+struct arguments {
+	boidContainer * boidlist;
+	goalContainer * goals;
+	int start;
+	int finish;
+};
+
+void * threadedMove(void * arg){
+	struct arguments * args = (struct arguments *) arg;
+	int i; 
+	size_t count = 0;
+	for(i = args->start; i < args->finish; i++){
+		if(args->boidlist->boidArr[i].active){
+			moveBoid(args->goals, args->boidlist, i);
+			count++;
+		}
+	}
+
+	pthread_exit((void *) count);
+	return NULL;
+}
 
 
 int step(boidContainer * boidlist, goalContainer * goals){
-	int i, count = 0;
-	for(i = 0; i < boidlist->size; i++){
-		if(boidlist->boidArr[i].active == 1){
-			moveBoid(goals, boidlist, i);
-			count++;
+	int i, count = 0, extras;
+	struct arguments arguments[NUMTHREADS];
+	pthread_t threads[NUMTHREADS];
+
+	extras = boidlist->size % NUMTHREADS;
+
+	for(i = 0; i < NUMTHREADS; i++){
+		arguments[i].boidlist = boidlist;
+		arguments[i].goals = goals;
+		
+		arguments[i].start = boidlist->size/NUMTHREADS*i;
+		if(i < extras){
+			arguments[i].start += i;
+		}else{
+			arguments[i].start += extras;
 		}
+
+
+		arguments[i].finish = arguments[i].start + boidlist->size/NUMTHREADS;
+		if(i < extras){
+			arguments[i].finish++;
+		}
+		
+		pthread_create(&threads[i], NULL, threadedMove, (void *) &arguments[i]);
+	}
+
+	for(i = 0; i < NUMTHREADS;i++){
+		size_t x = 0;
+		pthread_join(threads[i], (void **) &x);
+		count += x;
 	}
 	
 	return count;
