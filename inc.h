@@ -1,6 +1,11 @@
 //Master include file
 
+#ifndef INC_H
+#define INC_H
 #include <stdio.h>
 #include <stdlib.h>
-#include "boid.h"
+#include <limits.h>
+#include <math.h>
 #include "setup.h"
+#include "boid.h"
+#endif

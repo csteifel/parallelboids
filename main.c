@@ -3,9 +3,20 @@
 //Boid algorithm threaded approach
 
 //Start out with a limit on iterations until goal achievement is programmed
-#define ITERATIONS
+#define ITERATIONS 40
 
-int numBoids = 0;
+
+int step(boidContainer * boidlist, goalContainer * goals){
+	int i, count = 0;
+	for(i = 0; i < boidlist->size; i++){
+		if(boidlist->boidArr[i].active == 1){
+			moveBoid(goals, boidlist, i);
+			count++;
+		}
+	}
+	
+	return count;
+}
 
 int main(int argc, char * argv[]){
 	boidContainer container;
@@ -51,6 +62,15 @@ int main(int argc, char * argv[]){
 	for(i = 0; i < goals.size; i++){
 		printf("Goal %d position %d %d\n", i, goals.pos[i][0], goals.pos[i][1]);
 	}
+
+	for(i = 0; i < ITERATIONS; i++){
+		if(!step(&container, &goals)){
+			break;
+		}
+	}
+
+	printf("Completed in %d steps\n", i);
+
 	return 0;
 }
 

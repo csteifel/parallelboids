@@ -1,3 +1,6 @@
+struct boidContainer;
+typedef struct boidContainer boidContainer;
+
 struct goalContainer {
 	//pos is an array of positions (integer array with x and y)
 	int ** pos;

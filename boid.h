@@ -8,8 +8,13 @@
 #define EXIT_WEIGHT 1
 
 
+
+#define ALIGNWIDTH 4
+#define COHEREWIDTH 4
+
 //Used for velocity and acceleration
 struct directionVector {
+	//X and Y should be delta position not absolute position - i.e. move to the left should be x < 0
 	int x;
 	int y;
 };
@@ -35,13 +40,17 @@ struct boidContainer {
 
 typedef struct boidContainer boidContainer;
 
+
 //List prototypes for boid acceleration calculation
 //All should return directional vectors for acceleration calculation
-directionVector cohesion(boid * boidArr, int index);
-directionVector aversion(boid * boidArr, int index);
-directionVector collision(boid * boidArr, int index);
-directionVector alignment(boid * boidArr, int index);
-directionVector moveToExit(boid * boidArr, int index);
+void moveBoid(const goalContainer * const goals, boidContainer * boidlist, int index);
+directionVector cohesion(const boidContainer * const boidlist, int index);
+directionVector aversion(const boidContainer * const boidlist, int index);
+directionVector collision(const boidContainer * const boidlist, int index);
+directionVector alignment(const boidContainer * const boidlist, int index);
+directionVector moveToExit(const goalContainer * const goals, const boidContainer * const boidlist, int index);
+
+directionVector getGoalDistance(int goalx, int goaly, const boid * const b);
 
 #define CONTAINEREXTEND 10
 
