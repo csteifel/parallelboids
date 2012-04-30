@@ -18,7 +18,7 @@ int boidInsert(boidContainer * container, boid * insert){
 }
 
 int boidRemove(boidContainer * container, int * list){
-	
+	return 0;
 }
 
 //Calculate the vector to move towards the exit
