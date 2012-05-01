@@ -1,6 +1,4 @@
 #include "inc.h"
-<<<<<<< HEAD
-=======
 
 
 /* BOID FUNCTIONS
@@ -190,6 +188,5 @@ void moveBoid(const goalContainer * const goals, boidContainer * boidlist, int i
 	}
 	
 }
->>>>>>> threaded
 
 

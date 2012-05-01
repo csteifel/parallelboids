@@ -1,8 +1,6 @@
 #include "inc.h"
 
 //Boid algorithm threaded approach
-<<<<<<< HEAD
-=======
 
 //Start out with a limit on iterations until goal achievement is programmed
 #define ITERATIONS 9000 
@@ -143,7 +141,6 @@ void printBoard(short ** map, int mapwidth, int mapheight){
 	printf("\n\n");
 }
 
->>>>>>> threaded
 
 int main(int argc, char * argv[]){
 	boidContainer container;
@@ -166,9 +163,6 @@ int main(int argc, char * argv[]){
 	container.alloc = 10;
 	container.boidArr = (boid *) calloc(container.alloc, sizeof(boid));
 	
-<<<<<<< HEAD
-	
-=======
 	goals.size = 0;
 	goals.alloc=10;
 	goals.pos = (int **) calloc(goals.alloc, sizeof(int *));
@@ -201,7 +195,6 @@ int main(int argc, char * argv[]){
 	}
 
 	printf("Completed in %d steps\n", i);
->>>>>>> threaded
 
 	return 0;
 }
