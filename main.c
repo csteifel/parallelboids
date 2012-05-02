@@ -6,14 +6,6 @@
 #define ITERATIONS 9000 
 #define NUMTHREADS 20
 
-struct arguments {
-	boidContainer * boidlist;
-	goalContainer * goals;
-	int start;
-	int finish;
-};
-
-
 
 //Find the closest open spot on the map and place the boid there
 void findClosest(short *** map, int x, int y, int width, int height, int * positions){
@@ -40,7 +32,7 @@ void findClosest(short *** map, int x, int y, int width, int height, int * posit
 }
 
 
-void * threadedMove(void * arg){
+/*void * threadedMove(void * arg){
 	struct arguments * args = (struct arguments *) arg;
 	int i; 
 	size_t count = 0;
@@ -54,50 +46,13 @@ void * threadedMove(void * arg){
 	pthread_exit((void *) count);
 	return NULL;
 }
-
+*/
 
 int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *** blankMap, int width, int height){
-	int i, count = 0, extras, threadCount = NUMTHREADS;
-	struct arguments arguments[NUMTHREADS];
-	pthread_t threads[NUMTHREADS];
-
-	extras = boidlist->size % NUMTHREADS;
-	
-	
-	if(NUMTHREADS > boidlist->size){
-		threadCount = boidlist->size;
-	}
+	int i, count = 0;
 
 
-	//Spawn threads and tell them who they have to deal with
-	for(i = 0; i < threadCount; i++){
-		arguments[i].boidlist = boidlist;
-		arguments[i].goals = goals;
-		
-		arguments[i].start = boidlist->size/NUMTHREADS*i;
-		if(i < extras){
-			arguments[i].start += i;
-		}else{
-			arguments[i].start += extras;
-		}
 
-
-		arguments[i].finish = arguments[i].start + boidlist->size/NUMTHREADS;
-		if(i < extras){
-			arguments[i].finish++;
-		}
-		
-		pthread_create(&threads[i], NULL, threadedMove, (void *) &arguments[i]);
-	}
-
-	//We are executing each step in lock step fashion so wait for the threads to finish
-	for(i = 0; i < threadCount;i++){
-		size_t x = 0;
-		pthread_join(threads[i], (void **) &x);
-		count += x;
-	}
-		
-	
 	for(i = 0; i < width; i++){
 		free((*map)[i]);
 		(*map)[i] = (short *) calloc(height, sizeof(short));
