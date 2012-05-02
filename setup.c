@@ -9,12 +9,26 @@ file encoding: 0 - barrier/unusable spot
 3 - exit location
 */
 void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goals, short *** board, short *** blank, unsigned int * width, unsigned int * height){
-	FILE * fd = fopen(fileName, "r");
+	MPI_File fd;
 	unsigned int i, j;
+	unsigned int buf[2];
+	short * readArr = NULL;
 	boid * newBoid = NULL;
 
-	fscanf(fd, "%u %u", width, height);
+	//Open the file throughout all processors
+	MPI_File_open(MPI_COMM_WORLD, fileName, MPI_MODE_RDONLY, MPI_INFO_NULL, &fd);
+	
 
+
+
+	//MUST USE BINARY FILES FOR MPI VERSION
+	MPI_File_read_all(fd, buf, 2, MPI_UNSIGNED, MPI_STATUS_IGNORE);
+
+	*width = buf[0];
+	*height = buf[1];
+	
+
+	//Unfortunately if we want to doing map[x][y] we have to initialize everything first because reading is [y][x]
 	(*board) = (short **) calloc(*width, sizeof(short *));
 	(*blank) = (short **) calloc(*width, sizeof(short *));
 	for(i = 0; i < *width; i++){
@@ -22,11 +36,19 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 		(*blank)[i] = (short *) calloc(*height, sizeof(short));
 	}
 	
+
+	readArr = (short *) calloc(*width, sizeof(short));
+
 	//Go through parsing the file
 	for(j = 0; j < *height; j++){
+		MPI_File_read_all(fd, buf, width, MPI_SHORT, MPI_STATUS_IGNORE);
 		for(i = 0; i < *width; i++){
-			fscanf(fd, "%1hd", &((*board)[i][j]));
-			(*blank)[i][j] = (*board)[i][j];
+			(*blank)[i][j] = readArr[i];
+
+			//ADD IN IF IN ZONE -----------------
+
+
+
 			if((*board)[i][j] == 2){
 				(*blank)[i][j] = 1;
 				newBoid = (boid *) calloc(1, sizeof(boid));

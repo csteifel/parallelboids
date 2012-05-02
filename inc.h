@@ -10,4 +10,10 @@
 #include <string.h>
 #include "setup.h"
 #include "boid.h"
+
+
+int worldSize;
+int myRank;
+
+
 #endif

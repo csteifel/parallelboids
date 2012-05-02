@@ -150,6 +150,10 @@ int main(int argc, char * argv[]){
 	short ** blankMap = NULL;
 	unsigned int mapwidth, mapheight, i, j;
 
+	MPI_Init(&argc, &argv);
+	MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
+	MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+
 	if(argc == 2){
 		fileName = argv[1];
 	}else{
@@ -157,6 +161,8 @@ int main(int argc, char * argv[]){
 		fprintf(stderr, "Usage %s <input-file>\n", argv[0]);
 		exit(1);
 	}
+
+	
 
 	//Initialize containers
 	container.size = 0;
@@ -192,9 +198,12 @@ int main(int argc, char * argv[]){
 			break;
 		}
 		printBoard(map, mapwidth, mapheight);
+		
 	}
 
 	printf("Completed in %d steps\n", i);
+
+	MPI_Finalize();
 
 	return 0;
 }
