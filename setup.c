@@ -12,7 +12,6 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 	MPI_File fd;
 	unsigned int i, j;
 	unsigned int buf[2];
-	int across;
 	short * readArr = NULL;
 	boid * newBoid = NULL;
 
@@ -27,14 +26,17 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 	
 
 	//Get how many processors go across the top and down therefore making it easy to calculate area to watch
-	//world size has to be a power of 2
+	//world size has to be an square number
 	across = (int) sqrt( worldSize);
-	row = across/myRank;
-	column = across % myRank;
+	acrossRow = *width / across;
+	acrossCol = *height / across;
+	row = acrossRow * myRank;
+	column = acrossCol * myRank;
 
 	//Unfortunately if we want to doing map[x][y] we have to initialize everything first because reading is [y][x]
 	(*board) = (short **) calloc(*width, sizeof(short *));
 	(*blank) = (short **) calloc(*width, sizeof(short *));
+
 	for(i = 0; i < *width; i++){
 		(*board)[i] = (short *) calloc(*height, sizeof(short));
 		(*blank)[i] = (short *) calloc(*height, sizeof(short));
@@ -44,9 +46,9 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 	
 	//Go through parsing the file
 	for(j = 0; j < *height; j++){
-		MPI_File_read_all(fd, buf, (int) (*width), MPI_SHORT, MPI_STATUS_IGNORE);
+		MPI_File_read_all(fd, readArr, (int) (*width), MPI_SHORT, MPI_STATUS_IGNORE);
 		for(i = 0; i < *width; i++){
-
+			(*board)[i][j] = readArr[i];
 			(*blank)[i][j] = readArr[i];
 
 			if((*board)[i][j] == 2 && i >= column*((*width)/across) && i < (column+1)*((*width)/across) && j >= row*((*height)/across) && j < (row+1)*((*height)/across) ){

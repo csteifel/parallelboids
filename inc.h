@@ -13,6 +13,6 @@
 
 
 int worldSize, myRank;
-int row, column;
+int row, column, across, acrossRow, acrossCol;
 
 #endif

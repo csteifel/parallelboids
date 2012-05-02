@@ -85,15 +85,25 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 }
 
 
-void printBoard(short ** map, int mapwidth, int mapheight){
-	int i, j;
-	for(j = 0; j < mapheight; j++){
-		for(i = 0; i < mapwidth; i++){
-			printf("%hd", map[i][j]);
+void printBoard(short ** map, int mapwidth, int mapheight, MPI_File output, int iteration ){
+	//Print out processors section of map to file
+	int i, j, offset;
+	short * mapline;
+	mapline = (short *) calloc(mapwidth, sizeof(short));
+	
+	for(j = 0; j < acrossCol; j++){
+		offset = iteration * mapheight * mapwidth * sizeof(short);
+		for(i = 0; i < acrossRow; i++){
+			mapline[i] = map[i + column*across][row*across*mapwidth + j];
 		}
-		printf("\n");
+		//Row offset
+		offset += row * acrossRow * mapwidth * sizeof(short) + j * acrossRow * sizeof(short);
+		//Column offset
+		offset += column * acrossCol * sizeof(short);
+		MPI_File_write_at(output, offset, mapline, acrossRow, MPI_SHORT, MPI_STATUS_IGNORE);
 	}
-	printf("\n\n");
+
+	free(mapline);
 }
 
 
@@ -103,7 +113,10 @@ int main(int argc, char * argv[]){
 	char * fileName = NULL;
 	short ** map = NULL;
 	short ** blankMap = NULL;
+	char output[16];
 	unsigned int mapwidth, mapheight, i, j;
+
+	MPI_File outputFile;
 
 	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
@@ -147,16 +160,18 @@ int main(int argc, char * argv[]){
 	for(i = 0; i < goals.size; i++){
 		printf("Goal %d position %d %d\n", i, goals.pos[i][0], goals.pos[i][1]);
 	}
-
+	
+	sprintf(output, "output-%d", worldSize);
+	MPI_File_open(MPI_COMM_WORLD, output, MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &outputFile);
+	printBoard(map, mapwidth, mapheight, outputFile,0);
 	for(i = 0; i < ITERATIONS; i++){
 		if(!step(&container, &goals, &map, &blankMap, mapwidth, mapheight)){
 			break;
 		}
-		printBoard(map, mapwidth, mapheight);
-		
+		printBoard(map, mapwidth, mapheight, outputFile, i);
 	}
 
-	printf("Completed in %d steps\n", i);
+	MPI_File_close(&outputFile);
 
 	MPI_Finalize();
 
