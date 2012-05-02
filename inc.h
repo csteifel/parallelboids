@@ -12,8 +12,7 @@
 #include "boid.h"
 
 
-int worldSize;
-int myRank;
-
+int worldSize, myRank;
+int row, column;
 
 #endif

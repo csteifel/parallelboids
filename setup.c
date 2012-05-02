@@ -12,14 +12,12 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 	MPI_File fd;
 	unsigned int i, j;
 	unsigned int buf[2];
+	int across;
 	short * readArr = NULL;
 	boid * newBoid = NULL;
 
 	//Open the file throughout all processors
 	MPI_File_open(MPI_COMM_WORLD, fileName, MPI_MODE_RDONLY, MPI_INFO_NULL, &fd);
-	
-
-
 
 	//MUST USE BINARY FILES FOR MPI VERSION
 	MPI_File_read_all(fd, buf, 2, MPI_UNSIGNED, MPI_STATUS_IGNORE);
@@ -27,6 +25,12 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 	*width = buf[0];
 	*height = buf[1];
 	
+
+	//Get how many processors go across the top and down therefore making it easy to calculate area to watch
+	//world size has to be a power of 2
+	across = (int) sqrt( worldSize);
+	row = across/myRank;
+	column = across % myRank;
 
 	//Unfortunately if we want to doing map[x][y] we have to initialize everything first because reading is [y][x]
 	(*board) = (short **) calloc(*width, sizeof(short *));
@@ -36,21 +40,18 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 		(*blank)[i] = (short *) calloc(*height, sizeof(short));
 	}
 	
-
 	readArr = (short *) calloc(*width, sizeof(short));
-
+	
 	//Go through parsing the file
 	for(j = 0; j < *height; j++){
-		MPI_File_read_all(fd, buf, width, MPI_SHORT, MPI_STATUS_IGNORE);
+		MPI_File_read_all(fd, buf, (int) (*width), MPI_SHORT, MPI_STATUS_IGNORE);
 		for(i = 0; i < *width; i++){
+
 			(*blank)[i][j] = readArr[i];
 
-			//ADD IN IF IN ZONE -----------------
-
-
-
-			if((*board)[i][j] == 2){
+			if((*board)[i][j] == 2 && i >= column*((*width)/across) && i < (column+1)*((*width)/across) && j >= row*((*height)/across) && j < (row+1)*((*height)/across) ){
 				(*blank)[i][j] = 1;
+
 				newBoid = (boid *) calloc(1, sizeof(boid));
 				newBoid->xpos = i;
 				newBoid->ypos = j;
@@ -58,6 +59,7 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 				newBoid->velocity.x = 0;
 				newBoid->velocity.y = 0;
 				boidInsert(boids, newBoid);
+
 				newBoid = NULL;
 			}else if((*board)[i][j] == 3){
 				//Should add to a list of exits so that its easy to figure out closest exit don't need to go through entire map
@@ -65,6 +67,8 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 			}
 		}
 	}
+
+	MPI_File_close(&fd);
 }
 
 void addGoal(goalContainer * goals, int x, int y){
