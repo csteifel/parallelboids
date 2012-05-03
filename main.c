@@ -373,8 +373,10 @@ int main(int argc, char * argv[]){
 
 	MPI_File outputFile;
 
-	MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
-	MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+	worldSize = numranks;
+	myRank = rank;
+	//MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
+	//MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
 	if(argc == 2){
 		fileName = argv[1];
@@ -393,9 +395,10 @@ int main(int argc, char * argv[]){
 	goals.alloc=10;
 	goals.pos = (int **) calloc(goals.alloc, sizeof(int *));
 
+	printf("a\n");
 	//Set up the map and put all the boids in a boid container
 	setupSimulation(fileName, &container, &goals, &map, &blankMap, &mapwidth, &mapheight);
-
+	printf("b\n");
 	/*
 	for(j = 0; j < mapheight; j++){
 		for(i = 0; i < mapwidth; i++){
@@ -416,9 +419,10 @@ int main(int argc, char * argv[]){
 	// (widthOffset, heightOffset) to (widthOffset + widthSlice, heightOffset + heightSlice)
 	//printf("%d, %d, %d, %d\n", widthOffset, heightOffset, widthSlice, heightSlice);
 
+
 	sprintf(output, "output-%d", worldSize);
 	MPI_File_open(MPI_COMM_WORLD, output, MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &outputFile);
-	printBoard(map, mapwidth, mapheight, outputFile,0);
+	printBoard(map, mapwidth, mapheight, outputFile, 0);
 	
 	/*
 	// only let rank 0 output init stuff
@@ -455,6 +459,7 @@ int main(int argc, char * argv[]){
 		*/
 	      }
 
+	    printf("iteration: %d\n", i);
 	    if(!step(&container, &goals, &map, &blankMap, mapwidth, mapheight,
 		     widthSlice, heightSlice, widthOffset, heightOffset, rank, numranks))
 	      {
@@ -463,7 +468,7 @@ int main(int argc, char * argv[]){
 
 	    if (rank != -1)
 	      {
-		printf("iteration: %d\n", i);
+		//printf("iteration: %d\n", i);
 		//printBoard(map, mapwidth, mapheight);
 		printBoard(map, mapwidth, mapheight, outputFile, i);
 	      }
