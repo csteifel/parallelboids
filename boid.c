@@ -5,6 +5,8 @@
 	ALL FUNCTIONS IN THIS FILE SHOULD REENTRANT
 */
 
+
+
 int boidInsert(boidContainer * container, boid * insert){
 	//Check for need to extend container
 	if(container->size == container->alloc){
@@ -21,7 +23,7 @@ int boidInsert(boidContainer * container, boid * insert){
 	return 1;
 }
 
-int boidRemove(boidContainer * container, int * list){
+int boidRemove(boidContainer * container, int index){
 	return 0;
 }
 
@@ -173,7 +175,7 @@ int inSlice (boid thisBoid, int x, int y, int X, int Y)
   return 1;
 }
 
-void moveBoid(const goalContainer * const goals, boidContainer * boidlist, int index){
+void moveBoid(const goalContainer * const goals, boidContainer * boidlist, boidContainer * effectingBoids, int index){
 	directionVector exitVec, cohVec, alignVec, averVec, acceleration;
 	int i;
 
@@ -205,7 +207,6 @@ void moveBoid(const goalContainer * const goals, boidContainer * boidlist, int i
 	for(i = 0; i < goals->size; i++){
 		if(boidlist->boidArr[index].xpos == goals->pos[i][0] && boidlist->boidArr[index].ypos == goals->pos[i][1]){
 			boidlist->boidArr[index].active = 0;
-			printf("boid %d: goal!\n",boidlist->boidArr[index].id);
 		}
 	}
 	

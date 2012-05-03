@@ -5,12 +5,7 @@
 //Start out with a limit on iterations until goal achievement is programmed
 #define ITERATIONS 10
 
-struct arguments {
-	boidContainer * boidlist;
-	goalContainer * goals;
-	int start;
-	int finish;
-};
+
 
 
 
@@ -19,7 +14,6 @@ void findClosest(short *** map, int x, int y, int width, int height, int * posit
 	int lookRadius = 1;
 	int i, j, placed = 0;
 
-	printf("doing findClosest\n");
 	while(lookRadius < 2){
 		i = x - lookRadius;
 		i = (i < 0) ? 0 : i;
@@ -40,24 +34,20 @@ void findClosest(short *** map, int x, int y, int width, int height, int * posit
 }
 
 int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *** blankMap,
-	 int width, int height, int widthSlice, int heightSlice,
-	 int widthOffset, int heightOffset, int rank, int numranks)
+	 int width, int height)
 {
         int i, count = 0;
- 	int numIncoming = 0;
-	int source = 0;
-	int dest = 0;
-	int indices[1];
-	int tag = 0;       
-	int *boidData;
+ 	int numIncoming[2];
+	int indices[2];
+	int outCount;
 	MPI_Request recvRequest[2];
 	MPI_Request sendAboveRequest[2], sendBelowRequest[2];
 
 
 	boidContainer newBoids;
-	boidContainer sendBelowBoids, sendAboveBoids;
+	boidContainer sendBelowBoids, sendAboveBoids, recvAboveBoids, recvBelowBoids;
 	
-
+	printf("STARTING RANK %d\n", rank);
 
        	//boidlist will contain the tasks boids already 
 	// make a new array of our neighbor's boids
@@ -69,15 +59,15 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 
 	//Post Irecvs for incoming information from top and bottom neighbor
 	//If the top row of the map then don't recieve from the top 
-	if(heightOffset != 0){
-		MPI_Irecv(&numIncoming, 1, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &recvRequest[0]);
+	if(rank != 0){
+		MPI_Irecv(&numIncoming[0], 1, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &recvRequest[0]);
 	}
 	//If the bottom row of the map then don't recieve from the bottom
-	if(heightOffset + heightSlice != height){
-		MPI_Irecv(&numIncoming, 1, MPI_INT, rank+1, 1, MPI_COMM_WORLD, &recvRequest[1]);
+	if(rank != numranks -1 ){
+		MPI_Irecv(&numIncoming[1], 1, MPI_INT, rank+1, 1, MPI_COMM_WORLD, &recvRequest[1]);
 	}
-	
-	if(heightOffset != 0){
+
+	if(rank != 0){
 		//Calculate which boids are within range of sending and then send number of boids and boids
 		sendAboveBoids.size = 0;
 		sendAboveBoids.alloc = 10;
@@ -91,10 +81,10 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 
 
 		MPI_Isend(&sendAboveBoids.size, 1, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &sendAboveRequest[0]);
-		MPI_Isend(&sendAboveBoids.boidArr, sendAboveBoids.size, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &sendAboveRequest[1]);
+		MPI_Isend(&sendAboveBoids.boidArr, sendAboveBoids.size * sizeof(boid), MPI_BYTE, rank-1, 1, MPI_COMM_WORLD, &sendAboveRequest[1]);
 	}
 
-	if(heightOffset + heightSlice != height){
+	if(rank != numranks -1){
 		//Calculate which boids are within range of sending and then send number of boids and boids
 		sendBelowBoids.size = 0;
 		sendBelowBoids.alloc = 10;
@@ -107,222 +97,187 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 		}
 
 
-		MPI_Isend(&sendBelowBoids.size, 1, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &sendBelowRequest[0]);
-		MPI_Isend(&sendBelowBoids.boidArr, sendBelowBoids.size, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &sendBelowRequest[1]);
+		MPI_Isend(&sendBelowBoids.size, 1, MPI_INT, rank+1, 1, MPI_COMM_WORLD, &sendBelowRequest[0]);
+		MPI_Isend(&sendBelowBoids.boidArr, sendBelowBoids.size * sizeof(boid), MPI_BYTE, rank+1, 1, MPI_COMM_WORLD, &sendBelowRequest[1]);
 	}
 
-	// tag for first send/recv operation should be 1
+	printf("AFTER NUMBER %d\n", rank);
+
+
+	if(rank != 0){
+		//Recieve above boids
+		while(1){
+			MPI_Testsome(1, &recvRequest[0], &outCount, indices, MPI_STATUSES_IGNORE);
+			if(outCount == 1 && numIncoming[0] > 0){
+				recvAboveBoids.size = numIncoming[0];
+				recvAboveBoids.alloc = numIncoming[0];
+				recvAboveBoids.boidArr = (boid *) calloc(numIncoming[0], sizeof(boid));
+				MPI_Recv(recvAboveBoids.boidArr,  sizeof(boid) * numIncoming[0],MPI_BYTE, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				break;
+			}
+		}
+	}
+
+	if(rank != numranks -1){
+		//Recieve below boids
+		while(1){
+			MPI_Testsome(1, &recvRequest[1], &outCount, indices, MPI_STATUSES_IGNORE);
+			if(outCount == 1 && numIncoming[1] > 0){
+				recvBelowBoids.size = numIncoming[1];
+				recvBelowBoids.alloc = numIncoming[1];
+				recvBelowBoids.boidArr = (boid *) calloc(numIncoming[1], sizeof(boid));
+				MPI_Recv(recvBelowBoids.boidArr, sizeof(boid) * numIncoming[1],MPI_BYTE, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				break;
+			}
+		}
+	}
+	
+
+
+	printf("AFTER FIRST RECVS %d\n", rank);
+
+
+	//New boids for now will become a container for the boids we just recieved that could possibly effect our calculations
+	for(i = 0; i < recvAboveBoids.size && rank != 0; i++){
+		boidInsert(&newBoids, &recvAboveBoids.boidArr[i]);
+	}
+	for(i = 0; i < recvBelowBoids.size && rank != numranks - 1; i++){
+		boidInsert(&newBoids, &recvBelowBoids.boidArr[i]);
+	}
+
+	//Don't need array anymore already have data
+	if(rank != 0)
+		free(recvAboveBoids.boidArr);
+	if(rank != numranks -1)
+		free(recvBelowBoids.boidArr);
+
+	printf("AFTER FREES %d\n", rank);
+
+	for(i = 0; i < boidlist->size; i++){
+		moveBoid(goals, boidlist, &newBoids, i);	
+	}
+
+
+
+	//Local boids are moved so now we have to figure out if our local boids need to change owner ship and check for incoming changes
+
+
+	//Post recieves for the boids we are going to recieve from other tasks
+	//If the top row of the map then don't recieve from the top 
+	if(rank != 0){
+		MPI_Irecv(&numIncoming[0], 1, MPI_INT, MPI_ANY_SOURCE, 2, MPI_COMM_WORLD, &recvRequest[0]);
+	}
+	//If the bottom row of the map then don't recieve from the bottom
+	if(rank != numranks - 1){
+		MPI_Irecv(&numIncoming[1], 1, MPI_INT, MPI_ANY_SOURCE, 2, MPI_COMM_WORLD, &recvRequest[1]);
+	}
+	
+	//We are going to repurpose sendAboveBoids and sendBelowBoids here to be the one that sends boids to other processors if need be
+	
+	printf("POSTED SOME RECVS %d\n", rank);
+
+
+	sendAboveBoids.size = 0;
+	sendAboveBoids.alloc = 10;
+	sendAboveBoids.boidArr = (boid *) calloc(sendAboveBoids.alloc, sizeof(boid));
+
+	sendBelowBoids.size = 0;
+	sendBelowBoids.alloc = 10;
+	sendBelowBoids.boidArr = (boid *) calloc(sendBelowBoids.alloc, sizeof(boid));
+
+
+
+	for(i = 0; i < boidlist->size; i++){
+		if(boidlist->boidArr[i].ypos < heightOffset){
+			//Needs to go to process above me
+			boidInsert(&sendAboveBoids, &boidlist->boidArr[i]);
+
+			//Remove boid from local list
+			boidRemove(boidlist, i);
+			//i--;
+		}else if(boidlist->boidArr[i].ypos >= heightOffset+heightSlice){
+			//Needs to go to process below me
+			boidInsert(&sendBelowBoids, &boidlist->boidArr[i]);
+
+			//Remove boid from local list
+			boidRemove(boidlist, i);
+			//i--;
+		}
+	}
+
 
 	
 	
-	// receive from rank below us first (above in the map)
-	source = rank - 1;
-	// rank 0 does not have a rank to receive from right now
-	if (source != -1)
-	  MPI_Irecv(&numIncoming, 1, MPI_INT, source, tag, MPI_COMM_WORLD, &recvRequest[0]);
-	// now do sends to rank above us (below in map)
-	dest = rank + 1;
-	// rank numranks - 1 has no one to send to
-	if (dest != numranks)
-	  {
-	    //printf("%d: sending %d boids to %d\n", rank, ourBoids.size, dest);
-	    //printf("%d: pre send 1\n", rank);
-	    MPI_Send(&ourBoids.size, 1, MPI_INT, dest, tag, MPI_COMM_WORLD);
-	    //printf("%d: post send 1\n", rank);
-	  }
-
-	// wait for receives
-	if (source != -1)
-	  {
-	    count = 0;
-	    //printf("%d: pre testsome 1\n", rank);
-	    while (count <= 0)
-	      MPI_Testsome(1, recvRequest, &count, indices, MPI_STATUSES_IGNORE);
-	    //printf("%d: post testsome 1\n", rank);
-	  }
+	if(rank != 0){
+		printf("SENDING SIZE RANK %d\n", rank);
+		MPI_Isend(&sendAboveBoids.size, 1, MPI_INT, rank-1, 2, MPI_COMM_WORLD, &sendAboveRequest[0]);
+		if(sendAboveBoids.size > 0)
+			MPI_Isend(&sendAboveBoids.boidArr, sendAboveBoids.size * sizeof(boid), MPI_BYTE, rank-1, 2, MPI_COMM_WORLD, &sendAboveRequest[1]);
+	}
+	
+	printf("WRONG %d\n", rank);
+	if(rank != numranks -1){
+		printf("SENDING SIZE RANK %d\n", rank);
+		MPI_Isend(&sendBelowBoids.size, 1, MPI_INT, rank+1, 2, MPI_COMM_WORLD, &sendBelowRequest[0]);
+		if(sendBelowBoids.size > 0)
+			MPI_Isend(&sendBelowBoids.boidArr, sendBelowBoids.size * sizeof(boid), MPI_BYTE, rank+1, 2, MPI_COMM_WORLD, &sendBelowRequest[1]);
+	}
+	
+	printf("WRONG2 %d\n", rank);
 
 
-	// tag for sending/receiving the boids
-	tag = 2;
+	//Recieve incoming boids
 
-	// if nothing incoming don't bother with this step
-	if (numIncoming > 0)
-	  {
-	    // allocate space for the data we will receive
-	    boidData = (int *) calloc(numIncoming*6, sizeof(int));
-
-	    MPI_Irecv(&boidData[0], numIncoming*6, MPI_INT, source, tag, MPI_COMM_WORLD, &recvRequest[0]);
-	  }
-
-	// if nothing outgoing don't do this step
-	if (ourBoids.size > 0 && dest != numranks)
-	  {
-	    // allocate space for the data we will send
-	    boidData = (int *) calloc(ourBoids.size*6, sizeof(int));
-
-	    // populate the data we will send
-	    for (i = 0; i < ourBoids.size; i++)
-	      {
-		boidData[6*i+0] = ourBoids.boidArr[i].xpos;
-		boidData[6*i+1] = ourBoids.boidArr[i].ypos;
-		boidData[6*i+2] = ourBoids.boidArr[i].active;
-		boidData[6*i+3] = ourBoids.boidArr[i].velocity.x;
-		boidData[6*i+4] = ourBoids.boidArr[i].velocity.y;
-		boidData[6*i+5] = ourBoids.boidArr[i].id;
-	      }
-	    //printf("%d: sending %d boids to %d\n", rank, ourBoids.size, dest);
-	    //printf("%d: pre send 2\n", rank);
-	    MPI_Send(&boidData[0], ourBoids.size*6, MPI_INT, dest, tag, MPI_COMM_WORLD);
-	    //printf("%d: post send 2\n", rank);
-	  }
-
-	// wait for receives
-	if (source != -1 && numIncoming > 0)
-	  {
-	    count = 0;
-	    //printf("%d: pre testsome 2\n", rank);
-	    while (count <= 0)
-	      MPI_Testsome(1, recvRequest, &count, indices, MPI_STATUSES_IGNORE);
-	    //printf("%d: post testsome 2\n", rank);
-	  }
-
-	boid * newBoid = NULL;
-
-	// if we were expecting data
-	if (numIncoming > 0)
-	  {
-	    for (i = 0; i < numIncoming; i++)
-	      {
-		newBoid = (boid *) calloc(1, sizeof(boid));
-		newBoid->xpos = boidData[6*i+0];
-		newBoid->ypos = boidData[6*i+1];
-		newBoid->active = boidData[6*i+2];
-		newBoid->velocity.x = boidData[6*i+3];
-		newBoid->velocity.y = boidData[6*i+4];
-		newBoid->id = boidData[6*i+5];
-		boidInsert(&newBoids, newBoid);
-		newBoid = NULL;
-	      }
-	  }
-
-	// repeat for other direction
-	numIncoming = 0;
-
-	// irecv number of boids incoming
-	// tag for first send/recv operation (second time)
-	tag = 3;
-	// receive from rank above us first (below in the map)
-	source = rank + 1;
-	// rank 0 does not have a rank to receive from right now
-	if (source != numranks)
-	  MPI_Irecv(&numIncoming, 1, MPI_INT, source, tag, MPI_COMM_WORLD, &recvRequest[0]);
-	// now do sends to rank below us (above in map)
-	dest = rank - 1;
-	// rank 0 has no one to send to
-	if (dest != -1)
-	  {
-	    //printf("%d: sending %d boids to %d\n", rank, ourBoids.size, dest);
-	    //printf("%d: pre send 3\n", rank);
-	    MPI_Isend(&(ourBoids.size), 1, MPI_INT, dest, tag, MPI_COMM_WORLD);
-	    //printf("%d: post send 3\n", rank);
-	  }
-
-	// wait for receives
-	if (source != numranks)
-	  {
-	    count = 0;
-	    //printf("%d: pre testsome 3\n", rank);
-	    while (count <= 0)
-	      MPI_Testsome(1, recvRequest, &count, indices, MPI_STATUSES_IGNORE);
-	    //printf("%d: post testsome 3\n", rank);
-	  }
-
-	// tag for sending/receiving the boids (second time)
-	tag = 4;
-
-	// if nothing incoming don't bother with this step
-	if (numIncoming > 0)
-	  {
-	    // allocate space for the data we will receive
-	    boidData = (int *) calloc(numIncoming*6, sizeof(int));
-
-	    MPI_Irecv(&boidData[0], numIncoming*6, MPI_INT, source, tag, MPI_COMM_WORLD, &recvRequest[0]);
-	  }
-	// if nothing outgoing don't do this step
-	if (ourBoids.size > 0 && dest != -1)
-	  {
-	    // allocate space for the data we will send
-	    boidData = (int *) calloc(ourBoids.size*6, sizeof(int));
-
-	    // populate the data we will send
-	    for (i = 0; i < ourBoids.size; i++)
-	      {
-		boidData[6*i+0] = ourBoids.boidArr[i].xpos;
-		boidData[6*i+1] = ourBoids.boidArr[i].ypos;
-		boidData[6*i+2] = ourBoids.boidArr[i].active;
-		boidData[6*i+3] = ourBoids.boidArr[i].velocity.x;
-		boidData[6*i+4] = ourBoids.boidArr[i].velocity.y;
-		boidData[6*i+5] = ourBoids.boidArr[i].id;
-	      }
-	    //printf("%d: sending %d boids to %d\n", rank, ourBoids.size, dest);
-	    //printf("%d: pre send 4\n", rank);
-	    MPI_Send(&boidData[0], ourBoids.size*6, MPI_INT, dest, tag, MPI_COMM_WORLD);
-	    //printf("%d: post send 4\n", rank);
-	  }
-
-	// wait for receives
-	if (source != numranks && numIncoming > 0)
-	  {
-	    count = 0;
-	    //printf("%d: pre testsome 4\n", rank);
-	    while (count <= 0)
-	      MPI_Testsome(1, recvRequest, &count, indices, MPI_STATUSES_IGNORE);
-	    //printf("%d: post testsome 4\n", rank);
-	  }
-
-	// if we were expecting data
-	if (numIncoming > 0)
-	  {
-	    for (i = 0; i < numIncoming; i++)
-	      {
-		newBoid = (boid *) calloc(1, sizeof(boid));
-		newBoid->xpos = boidData[6*i+0];
-		newBoid->ypos = boidData[6*i+1];
-		newBoid->active = boidData[6*i+2];
-		newBoid->velocity.x = boidData[6*i+3];
-		newBoid->velocity.y = boidData[6*i+4];
-		newBoid->id = boidData[6*i+5];
-		boidInsert(&newBoids, newBoid);
-		newBoid = NULL;
-	      }
-	  }
-
-	// done sending and receiving boids to and from neighbors
-
-	// free map and copy blankMap over
-	for(i = 0; i < width; i++){
-		free((*map)[i]);
-		(*map)[i] = (short *) calloc(height, sizeof(short));
-		memcpy((*map)[i], (*blankMap)[i], height * sizeof(short));
+	if(rank != 0){
+		//Recieve above boids
+		while(1){
+			MPI_Testsome(1, &recvRequest[0], &outCount, indices, MPI_STATUSES_IGNORE);
+			if(outCount == 1){
+				if(numIncoming[0] == 0){
+					break;
+				}
+				recvAboveBoids.size = numIncoming[0];
+				recvAboveBoids.alloc = numIncoming[0];
+				recvAboveBoids.boidArr = (boid *) calloc(numIncoming[0], sizeof(boid));
+				MPI_Recv(recvAboveBoids.boidArr, sizeof(boid) * numIncoming[0], MPI_BYTE, MPI_ANY_SOURCE, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				break;
+			}
+		}
 	}
 
-	// we do not care about boidlist any more, we just care about ourBoids
-	// + newBoids
-	boidlist->size = 0;
-	boidlist->alloc = ourBoids.size + newBoids.size;
-	boidlist->boidArr = (boid *) calloc(boidlist->alloc, sizeof(boid));
+ 	
 
-	for (i = 0; i < ourBoids.size; i++)
-	  {
-	    boidInsert(boidlist, &ourBoids.boidArr[i]);
-	  }
-	for (i = 0; i < newBoids.size; i++)
-	  {
-	    boidInsert(boidlist, &newBoids.boidArr[i]);
-	  }
 
-	//if (boidlist->size != 0)
-	//printf("size: %d\n", boidlist->size);
+	if(rank != numranks - 1){
+		//Recieve above boids
+		while(1){
+			MPI_Testsome(1, &recvRequest[1], &outCount, indices, MPI_STATUSES_IGNORE);
+			if(outCount == 1){
+				if(numIncoming[1] > 0){
+					break;
+				}
+				recvBelowBoids.size = numIncoming[1];
+				recvBelowBoids.alloc = numIncoming[1];
+				recvBelowBoids.boidArr = (boid *) calloc(numIncoming[1], sizeof(boid));
+				MPI_Recv(recvBelowBoids.boidArr, sizeof(boid) * numIncoming[1], MPI_BYTE, MPI_ANY_SOURCE, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				break;
+			}
+		}
+	}
+
+	printf("RECIEVed INCOMING\n");
+
+	//Add them to the local boid list
+	for(i = 0; i < recvAboveBoids.size && rank != 0; i++){
+		boidInsert(boidlist, &recvAboveBoids.boidArr[i]);
+	}
+	for(i = 0; i < recvBelowBoids.size && rank != numranks -1 ; i++){
+		boidInsert(boidlist, &recvBelowBoids.boidArr[i]);
+	}
+
+
+
+
 
 	//We need to reconcile the map now based on boid positions and check for people on top of each other
 	for(i = 0; i < boidlist->size; i++)
@@ -361,12 +316,9 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	      }
 	  }
 	
-	// barrier
-	MPI_Barrier(MPI_COMM_WORLD);
-	
 	// return/repeat
-	
-	return 1;
+	MPI_Barrier(MPI_COMM_WORLD);	
+	return 0;
 	return count;
 }
 
@@ -395,6 +347,7 @@ int main(int argc, char * argv[]){
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &numranks);
+
 
 	if(argc == 2){
 		fileName = argv[1];
@@ -425,14 +378,10 @@ int main(int argc, char * argv[]){
 	}
 	*/
 
-	// okay every rank gets the entire map w/ boids
 
-	// so we only work with boids in the range
-	// (widthOffset, heightOffset) to (widthOffset + widthSlice, heightOffset + heightSlice)
-	//printf("%d, %d, %d, %d\n", widthOffset, heightOffset, widthSlice, heightSlice);
 	
 	// only let rank 0 output init stuff
-	if (rank == 0)
+	if (rank == 0 && 0)
 	  {
 	    printBoard(map, mapwidth, mapheight);
 
@@ -451,43 +400,15 @@ int main(int argc, char * argv[]){
 	    printf("\n");
 	  }
 	
+	step(&container, &goals, &map, &blankMap, mapwidth, mapheight);
+
 	// so now loop through the number of iterations
-	for(i = 0; i < ITERATIONS; i++)
-	  {
-	    for (j = 0; j < container.size; j ++)
-	      {
-		/*
-		if(inSlice(container.boidArr[j], widthOffset, heightOffset,
-			   widthOffset + widthSlice, heightOffset + heightSlice) == 1)	      
-		printf("before iteration: %d rank %d: boid: %d: %d, %d\n", i, rank, container.boidArr[j].id,
-			 container.boidArr[j].xpos, container.boidArr[j].ypos);
-		*/
-	      }
-
-	    if(!step(&container, &goals, &map, &blankMap, mapwidth, mapheight,
-		     widthSlice, heightSlice, widthOffset, heightOffset, rank, numranks))
-	      {
-		break;
-	      }
-
-	    if (rank == 2)
-	      {
-		//printf("iteration: %d\n", i);
-		//printBoard(map, mapwidth, mapheight);
-	      }
-
-	    
-	    for (j = 0; j < container.size; j ++)
-	      {
-		
-		//if(inSlice(container.boidArr[j], widthOffset, heightOffset,
-		//	   widthOffset + widthSlice, heightOffset + heightSlice) == 1)	      
-		//printf("after  iteration: %d rank %d: boid: %d: %d, %d\n", i, rank, container.boidArr[j].id,
-		//	 container.boidArr[j].xpos, container.boidArr[j].ypos);
-		
-	      }
-	  }
-	
+	/*for(i = 0; i < ITERATIONS; i++){
+		printf("RANK %d\n", rank);
+		if(!step(&container, &goals, &map, &blankMap, mapwidth, mapheight, rank, numranks)){
+			break;
+		}
+	}*/
 	if (rank == 0)
 	  printf("Completed in %d steps\n", i);
 	

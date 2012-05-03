@@ -1,7 +1,10 @@
-//Master include file
-
 #ifndef INC_H
 #define INC_H
+
+
+//Master include file
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -12,8 +15,7 @@
 #include "boid.h"
 
 int rank, numranks;
-int widthSlice = 0, heightSlice = 0, widthOffset = 0, heightOffset = 0;
-
+int widthSlice, heightSlice, widthOffset, heightOffset;
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 

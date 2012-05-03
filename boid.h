@@ -25,7 +25,6 @@ typedef struct directionVector directionVector;
 
 
 struct boid {
-        int id;
 	int xpos;
 	int ypos;
 	directionVector velocity;
@@ -46,7 +45,7 @@ struct boidContainer {
 
 //List prototypes for boid acceleration calculation
 //All should return directional vectors for acceleration calculation
-void moveBoid(const goalContainer * const goals, boidContainer * boidlist, int index);
+void moveBoid(const goalContainer * const goals, boidContainer * boidlist, boidContainer * effectingBoids, int index);
 directionVector cohesion(const boidContainer * const boidlist, int index);
 directionVector aversion(const boidContainer * const boidlist, int index);
 directionVector alignment(const boidContainer * const boidlist, int index);
@@ -60,5 +59,6 @@ int inSlice(boid thisBoid, int x, int y, int X, int Y);
 
 //boidContainer functions
 int boidInsert(boidContainer * container, boid * insert);
+int boidRemove(boidContainer * container, int index);
 
 #endif

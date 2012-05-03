@@ -12,6 +12,7 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 	MPI_File fd;
 	unsigned int i, j;
 	unsigned int buf[2];
+	short * readArr;
 	boid * newBoid = NULL;
 
 	//Open the file throughout all processors
@@ -21,12 +22,12 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 	MPI_File_read_all(fd, buf, 2, MPI_UNSIGNED, MPI_STATUS_IGNORE);
 
 
-	*weight = buf[0];
+	*width= buf[0];
 	*height = buf[1];
 
 
-	widthSlice = mapwidth;
-	heightSlice = mapheight / numranks;
+	widthSlice = *width;
+	heightSlice = *height / numranks;
 	widthOffset = 0;
 	heightOffset = heightSlice * rank;
 
@@ -56,7 +57,6 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 					newBoid->active = 1;
 					newBoid->velocity.x = 0;
 					newBoid->velocity.y = 0;
-					newBoid->id = boids->size;
 					boidInsert(boids, newBoid);
 					newBoid = NULL;
 				}else{

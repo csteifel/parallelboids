@@ -1,3 +1,5 @@
+#ifndef SETUP_H
+#define SETUP_H
 struct boidContainer;
 typedef struct boidContainer boidContainer;
 
@@ -12,3 +14,5 @@ typedef struct goalContainer goalContainer;
 
 void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goals, short *** board, short *** blank, unsigned int * width, unsigned int * height);
 void addGoal(goalContainer * goals, int x, int y);
+
+#endif
