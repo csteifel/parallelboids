@@ -1,17 +1,9 @@
 #include "inc.h"
 
-//Boid algorithm threaded approach
+//Boid algorithm mpi approach
 
 //Start out with a limit on iterations until goal achievement is programmed
 #define ITERATIONS 10
-
-struct arguments {
-	boidContainer * boidlist;
-	goalContainer * goals;
-	int start;
-	int finish;
-};
-
 
 
 //Find the closest open spot on the map and place the boid there
@@ -328,7 +320,6 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 		  }
 	      }
 	  }
-	
 
 	// barrier
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -340,15 +331,25 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 }
 
 
-void printBoard(short ** map, int mapwidth, int mapheight){
-	int i, j;
-	for(j = 0; j < mapheight; j++){
-		for(i = 0; i < mapwidth; i++){
-			printf("%hd", map[i][j]);
+void printBoard(short ** map, int mapwidth, int mapheight, MPI_File output, int iteration ){
+	//Print out processors section of map to file
+	int i, j, offset;
+	short * mapline;
+	mapline = (short *) calloc(mapwidth, sizeof(short));
+	
+	for(j = 0; j < acrossCol; j++){
+		offset = iteration * mapheight * mapwidth * sizeof(short);
+		for(i = 0; i < acrossRow; i++){
+			mapline[i] = map[i + column*across][row*across*mapwidth + j];
 		}
-		printf("\n");
+		//Row offset
+		offset += row * acrossRow * mapwidth * sizeof(short) + j * acrossRow * sizeof(short);
+		//Column offset
+		offset += column * acrossCol * sizeof(short);
+		MPI_File_write_at(output, offset, mapline, acrossRow, MPI_SHORT, MPI_STATUS_IGNORE);
 	}
-	printf("\n\n");
+
+	free(mapline);
 }
 
 
@@ -358,6 +359,7 @@ int main(int argc, char * argv[]){
 	char * fileName = NULL;
 	short ** map = NULL;
 	short ** blankMap = NULL;
+	char output[16];
 	unsigned int mapwidth, mapheight, i, j;
 
 	// mpi stuff
@@ -368,6 +370,11 @@ int main(int argc, char * argv[]){
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &numranks);
+
+	MPI_File outputFile;
+
+	MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
+	MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
 	if(argc == 2){
 		fileName = argv[1];
@@ -408,7 +415,12 @@ int main(int argc, char * argv[]){
 	// so we only work with boids in the range
 	// (widthOffset, heightOffset) to (widthOffset + widthSlice, heightOffset + heightSlice)
 	//printf("%d, %d, %d, %d\n", widthOffset, heightOffset, widthSlice, heightSlice);
+
+	sprintf(output, "output-%d", worldSize);
+	MPI_File_open(MPI_COMM_WORLD, output, MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &outputFile);
+	printBoard(map, mapwidth, mapheight, outputFile,0);
 	
+	/*
 	// only let rank 0 output init stuff
 	if (rank == 0)
 	  {
@@ -428,6 +440,7 @@ int main(int argc, char * argv[]){
 	    
 	    printf("\n");
 	  }
+	*/
 	
 	// so now loop through the number of iterations
 	for(i = 0; i < ITERATIONS; i++)
@@ -448,10 +461,11 @@ int main(int argc, char * argv[]){
 		break;
 	      }
 
-	    if (rank == 2)
+	    if (rank != -1)
 	      {
-		//printf("iteration: %d\n", i);
+		printf("iteration: %d\n", i);
 		//printBoard(map, mapwidth, mapheight);
+		printBoard(map, mapwidth, mapheight, outputFile, i);
 	      }
 
 	    
@@ -469,7 +483,10 @@ int main(int argc, char * argv[]){
 	if (rank == 0)
 	  printf("Completed in %d steps\n", i);
 	
+	MPI_File_close(&outputFile);
+
 	MPI_Finalize();
+
 	return 0;
 }
 

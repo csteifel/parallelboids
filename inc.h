@@ -6,9 +6,14 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <math.h>
-#include <pthread.h>
+#include <mpi.h>
 #include <string.h>
 #include <mpi.h>
 #include "setup.h"
 #include "boid.h"
+
+
+int worldSize, myRank;
+int row, column, across, acrossRow, acrossCol;
+
 #endif
