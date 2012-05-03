@@ -3,7 +3,7 @@
 //Boid algorithm threaded approach
 
 //Start out with a limit on iterations until goal achievement is programmed
-#define ITERATIONS 10 
+#define ITERATIONS 10
 
 struct arguments {
 	boidContainer * boidlist;
@@ -40,7 +40,7 @@ void findClosest(short *** map, int x, int y, int width, int height, int * posit
 
 int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *** blankMap, int width, int height, int widthSlice, int heightSlice, int widthOffset, int heightOffset, int rank, int numranks){
   int i, count = 0;
-  
+        
         // get the array of just our boids
         boidContainer ourBoids;
         ourBoids.size = 0;
@@ -53,20 +53,21 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	    // check if the boid is in our slice
 	    if(inSlice(boidlist->boidArr[i], widthOffset, heightOffset, widthOffset + widthSlice, heightOffset + heightSlice) == 1)
 	      {
+		// also move this boid
+		moveBoid(goals, boidlist, i);
 		// add to new container if so
 		boidInsert(&ourBoids, &boidlist->boidArr[i]);
-		//moveBoid(goals, boidlist, i);
 	      }
 	  }
 
-	// update boids in neighboring slices
+	// send all of our boids to all of our neighbors
+
 	// irecv number of boids incoming
-	int numIncoming;
-	int source;
-	int dest;
-	int tag;
+	int numIncoming = 0;
+	int source = 0;
+	int dest = 0;
+	int tag = 0;
 	MPI_Request recvRequest[1];
-	MPI_Request sendRequest[1];
 	int indices[1];
 	// tag for first send/recv operation
 	tag = 1;
@@ -125,16 +126,14 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	if (source != -1 && numIncoming > 0)
 	  {
 	    count = 0;
-	    printf("pre receive\n");
 	    while (count <= 0)
 	      MPI_Testsome(1, recvRequest, &count, indices, MPI_STATUSES_IGNORE);
-	    printf("post receive\n");
 	  }
 
 	boid * newBoid = NULL;
 
 	// if we were expecting data
-	if (numIncoming > 0)
+	if (numIncoming > 0 && source != -1)
 	  {
 	    for (i = 0; i < numIncoming; i++)
 	      {
@@ -150,42 +149,88 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	      }
 	  }
 
-	// repeat the above for send/recv in the other direction
+	// repeat for other direction
+	numIncoming = 0;
 
-	// ourBoids is actually now "boids that matter"
+	// irecv number of boids incoming
+	// tag for first send/recv operation (second time)
+	tag = 3;
+	// receive from rank above us first (below in the map)
+	source = rank + 1;
+	// rank 0 does not have a rank to receive from right now
+	if (source != numranks)
+	  MPI_Irecv(&numIncoming, 1, MPI_INT, source, tag, MPI_COMM_WORLD, &recvRequest[0]);
+	// now do sends to rank below us (above in map)
+	dest = rank - 1;
+	// rank 0 has no one to send to
+	if (dest != numranks)
+	  MPI_Send(&ourBoids.size, 1, MPI_INT, dest, tag, MPI_COMM_WORLD);
 
-	// do move on ourBoids (in boids that matter)
-
-	// iterate through the boids that matter boidlist
-	for(i = 0; i < ourBoids.size; i++)
+	// wait for receives
+	if (source != numranks)
 	  {
-	    // check if the boid is in our slice
-	    if(inSlice(boidlist->boidArr[i], widthOffset, heightOffset, widthOffset + widthSlice, heightOffset + heightSlice) == 1)
+	    count = 0;
+	    while (count <= 0)
+	      MPI_Testsome(1, recvRequest, &count, indices, MPI_STATUSES_IGNORE);
+	  }
+
+	// tag for sending/receiving the boids (second time)
+	tag = 4;
+
+	// if nothing incoming don't bother with this step
+	if (numIncoming > 0)
+	  {
+	    // allocate space for the data we will receive
+	    boidData = (int *) calloc(numIncoming*6, sizeof(int));
+
+	    MPI_Irecv(&boidData[0], numIncoming*6, MPI_INT, source, tag, MPI_COMM_WORLD, &recvRequest[0]);
+	  }
+	// if nothing outgoing don't do this step
+	if (ourBoids.size > 0 && rank != 0)
+	  {
+	    // allocate space for the data we will send
+	    boidData = (int *) calloc(ourBoids.size*6, sizeof(int));
+
+	    // populate the data we will send
+	    for (i = 0; i < ourBoids.size; i++)
 	      {
-		// move if so
-		moveBoid(goals, &ourBoids, i);
-		//printf("moving\n");
+		boidData[6*i+0] = ourBoids.boidArr[i].xpos;
+		boidData[6*i+1] = ourBoids.boidArr[i].ypos;
+		boidData[6*i+2] = ourBoids.boidArr[i].active;
+		boidData[6*i+3] = ourBoids.boidArr[i].velocity.x;
+		boidData[6*i+4] = ourBoids.boidArr[i].velocity.y;
+		boidData[6*i+5] = ourBoids.boidArr[i].id;
+	      }
+	    MPI_Send(&boidData[0], ourBoids.size*6, MPI_INT, dest, tag, MPI_COMM_WORLD);
+	  }
+
+	// wait for receives
+	if (source != numranks && numIncoming > 0)
+	  {
+	    count = 0;
+	    while (count <= 0)
+	      MPI_Testsome(1, recvRequest, &count, indices, MPI_STATUSES_IGNORE);
+	  }
+
+	// if we were expecting data
+	if (numIncoming > 0 && source != numranks)
+	  {
+	    for (i = 0; i < numIncoming; i++)
+	      {
+		newBoid = (boid *) calloc(1, sizeof(boid));
+		newBoid->xpos = boidData[6*i+0];
+		newBoid->ypos = boidData[6*i+1];
+		newBoid->active = boidData[6*i+2];
+		newBoid->velocity.x = boidData[6*i+3];
+		newBoid->velocity.y = boidData[6*i+4];
+		newBoid->id = boidData[6*i+5];
+		boidInsert(&ourBoids, newBoid);
+		newBoid = NULL;
 	      }
 	  }
 
-	// post irecv for post move
-	// (boids who move from another slice into our slice)
+	// done sending and receiving boids to and from neighbors
 
-	// send boids from our slice into neighboring slices
-	// (if applicable)
-
-	// receive boids from other slices
-	// (if applicable)
-
-	// post irecv for possible "return to sender"
-
-	// check if boids are on top of each other, etc.
-	// move them to closest available spot
-	// if closest is in another slice send it to correct neighbor
-
-	// receive any boids who were returned
-	// move them to closest available spot in this slice
-	
 	// free map and copy blankMap over
 	for(i = 0; i < width; i++){
 		free((*map)[i]);
@@ -194,37 +239,55 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	}
 
 	// we do not care about boidlist any more, we just care about ourBoids
-	// (+ neighbor boids I guess) so boidlist is now "boids that matter" list
+	// (+ neighbor boids I guess) so boidlist is new "boids that matter" list
 	boidlist->size = 0;
 	boidlist->alloc = ourBoids.size;
 	boidlist->boidArr = (boid *) calloc(boidlist->alloc, sizeof(boid));
+
 	for (i = 0; i < ourBoids.size; i++)
 	  {
 	    boidInsert(boidlist, &ourBoids.boidArr[i]);
 	  }
 
+	//printf("size: %d\n", boidlist->size);
+
 	//We need to reconcile the map now based on boid positions and check for people on top of each other
-	for(i = 0; i < boidlist->size; i++){
-		int location[2];
-
-		if(boidlist->boidArr[i].active == 1){
-			if((*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] == 1){
-				(*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] = 2;
-			}else if((*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] == 2){
-				//Move to nearest open spot simulates pushing
-				findClosest(map, boidlist->boidArr[i].xpos, boidlist->boidArr[i].ypos, width, height, location);
-				boidlist->boidArr[i].xpos = location[0];
-				boidlist->boidArr[i].ypos = location[1];
-
-				(*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] = 2;
-
-			}else if((*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] == 0){
-			  if (rank == 0)
-			    printf("Error in placement\n");
-			}
-		}
-	}
-
+	for(i = 0; i < boidlist->size; i++)
+	  {
+	    int location[2];
+	    
+	    // if boid is active and in our slice
+	    //if(boidlist->boidArr[i].active == 1)
+	    //printf ("%d, %d\n", boidlist->boidArr[i].xpos, boidlist->boidArr[i].ypos);
+	    if(inSlice(boidlist->boidArr[i], widthOffset, heightOffset, widthOffset + widthSlice, heightOffset + heightSlice) == 1)
+	      {
+		// if map is free space
+		if((*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] == 1)
+		  {
+		    // set to boid
+		    (*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] = 2;
+		  }
+		// if map is occupied
+		else if((*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] == 2)
+		  {
+		    //Move to nearest open spot, simulates pushing
+		    findClosest(map, boidlist->boidArr[i].xpos, boidlist->boidArr[i].ypos, width, height, location);
+		    boidlist->boidArr[i].xpos = location[0];
+		    boidlist->boidArr[i].ypos = location[1];
+		    
+		    (*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] = 2;
+		    
+		  }
+		// if map is wall
+		else if((*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] == 0)
+		  {
+		    // i am error
+		    if (rank == 0)
+		      printf("Error in placement\n");
+		  }
+	      }
+	  }
+	
 	// return/repeat
 	
 	return 1;
@@ -324,11 +387,18 @@ int main(int argc, char * argv[]){
 	    break;
 	  }
 	  // only letting rank 0 output for testing purposes
-	  if (rank == 1)
+	  if (rank == 0)
 	    {
 	      //printf("iteration: %d\n", i);
 	      printBoard(map, mapwidth, mapheight);
 	    }
+	  /*
+	  for (j = 0; j < container.size; j ++)
+	    {
+	      printf("rank %d: boid: %d %d, %d\n", rank, container.boidArr[j].id,
+		     container.boidArr[j].xpos, container.boidArr[j].ypos);
+	    }
+	  */
 	}
 	
 
