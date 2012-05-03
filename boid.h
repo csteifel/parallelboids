@@ -12,6 +12,7 @@
 #define ALIGNWIDTH 4
 #define COHEREWIDTH 4
 #define SEPARATIONWIDTH 2
+#define MAXWIDTH MAX(MAX(ALIGNWIDTH, COHEREWIDTH), SEPARATIONWIDTH)
 
 //Used for velocity and acceleration
 struct directionVector {
@@ -36,8 +37,8 @@ typedef struct boid boid;
 
 struct boidContainer {
 	boid * boidArr;
-	size_t size;
-	size_t alloc;
+	int size;
+	int alloc;
 };
 
 //typedef struct boidContainer boidContainer;

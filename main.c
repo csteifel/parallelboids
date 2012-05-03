@@ -44,44 +44,77 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	 int widthOffset, int heightOffset, int rank, int numranks)
 {
         int i, count = 0;
-        
-        // get the array of just our boids
-        boidContainer ourBoids;
-        ourBoids.size = 0;
-        ourBoids.alloc = 10;
-	ourBoids.boidArr = (boid *) calloc(ourBoids.alloc, sizeof(boid));
+ 	int numIncoming = 0;
+	int source = 0;
+	int dest = 0;
+	int indices[1];
+	int tag = 0;       
+	int *boidData;
+	MPI_Request recvRequest[2];
+	MPI_Request sendAboveRequest[2], sendBelowRequest[2];
 
-	// iterate through the entire boidlist
-	for(i = 0; i < boidlist->size; i++)
-	  {
-	    // check if the boid is in our slice
-	    if(inSlice(boidlist->boidArr[i], widthOffset, heightOffset, widthOffset + widthSlice, heightOffset + heightSlice) == 1)
-	      {
-		// also move this boid
-		moveBoid(goals, boidlist, i);
-		// add to new container if so
-		boidInsert(&ourBoids, &boidlist->boidArr[i]);
-	      }
-	  }
 
-	// make a new array of our neighbor's boids
 	boidContainer newBoids;
+	boidContainer sendBelowBoids, sendAboveBoids;
+	
+
+
+       	//boidlist will contain the tasks boids already 
+	// make a new array of our neighbor's boids
 	newBoids.size = 0;
         newBoids.alloc = 10;
 	newBoids.boidArr = (boid *) calloc(newBoids.alloc, sizeof(boid));
 
-	// send all of our boids to all of our neighbors
-	
-	int numIncoming = 0;
-	int source = 0;
-	int dest = 0;
-	int tag = 0;
-	MPI_Request recvRequest[1];
-	int indices[1];
 
-	// irecv number of boids incoming	
-	// tag for first send/recv operation
-	tag = 1;
+
+	//Post Irecvs for incoming information from top and bottom neighbor
+	//If the top row of the map then don't recieve from the top 
+	if(heightOffset != 0){
+		MPI_Irecv(&numIncoming, 1, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &recvRequest[0]);
+	}
+	//If the bottom row of the map then don't recieve from the bottom
+	if(heightOffset + heightSlice != height){
+		MPI_Irecv(&numIncoming, 1, MPI_INT, rank+1, 1, MPI_COMM_WORLD, &recvRequest[1]);
+	}
+	
+	if(heightOffset != 0){
+		//Calculate which boids are within range of sending and then send number of boids and boids
+		sendAboveBoids.size = 0;
+		sendAboveBoids.alloc = 10;
+		sendAboveBoids.boidArr = (boid *) calloc(sendAboveBoids.alloc, sizeof(boid));
+
+		for(i = 0; i < boidlist->size; i++){
+			if(boidlist->boidArr[i].ypos >= heightOffset && boidlist->boidArr[i].ypos < heightOffset + MAXWIDTH){
+				boidInsert(&sendAboveBoids, &boidlist->boidArr[i]);
+			}
+		}
+
+
+		MPI_Isend(&sendAboveBoids.size, 1, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &sendAboveRequest[0]);
+		MPI_Isend(&sendAboveBoids.boidArr, sendAboveBoids.size, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &sendAboveRequest[1]);
+	}
+
+	if(heightOffset + heightSlice != height){
+		//Calculate which boids are within range of sending and then send number of boids and boids
+		sendBelowBoids.size = 0;
+		sendBelowBoids.alloc = 10;
+		sendBelowBoids.boidArr = (boid *) calloc(sendBelowBoids.alloc, sizeof(boid));
+
+		for(i = 0; i < boidlist->size; i++){
+			if(boidlist->boidArr[i].ypos >= heightOffset + heightSlice - MAXWIDTH && boidlist->boidArr[i].ypos < heightOffset + heightSlice){
+				boidInsert(&sendBelowBoids, &boidlist->boidArr[i]);
+			}
+		}
+
+
+		MPI_Isend(&sendBelowBoids.size, 1, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &sendBelowRequest[0]);
+		MPI_Isend(&sendBelowBoids.boidArr, sendBelowBoids.size, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &sendBelowRequest[1]);
+	}
+
+	// tag for first send/recv operation should be 1
+
+	
+	
 	// receive from rank below us first (above in the map)
 	source = rank - 1;
 	// rank 0 does not have a rank to receive from right now
@@ -108,7 +141,6 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	    //printf("%d: post testsome 1\n", rank);
 	  }
 
-	int *boidData;
 
 	// tag for sending/receiving the boids
 	tag = 2;
@@ -191,7 +223,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	  {
 	    //printf("%d: sending %d boids to %d\n", rank, ourBoids.size, dest);
 	    //printf("%d: pre send 3\n", rank);
-	    MPI_Send(&ourBoids.size, 1, MPI_INT, dest, tag, MPI_COMM_WORLD);
+	    MPI_Isend(&(ourBoids.size), 1, MPI_INT, dest, tag, MPI_COMM_WORLD);
 	    //printf("%d: post send 3\n", rank);
 	  }
 
@@ -359,11 +391,7 @@ int main(int argc, char * argv[]){
 	short ** blankMap = NULL;
 	unsigned int mapwidth, mapheight, i, j;
 
-	// mpi stuff
-	int rank, numranks;
-	int widthOffset, heightOffset;
-	int widthSlice, heightSlice;
-
+	
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &numranks);
@@ -399,11 +427,6 @@ int main(int argc, char * argv[]){
 
 	// okay every rank gets the entire map w/ boids
 
-	// now calculate our slice
-	widthSlice = mapwidth;
-	heightSlice = mapheight / numranks;
-	widthOffset = 0;
-	heightOffset = heightSlice * rank;
 	// so we only work with boids in the range
 	// (widthOffset, heightOffset) to (widthOffset + widthSlice, heightOffset + heightSlice)
 	//printf("%d, %d, %d, %d\n", widthOffset, heightOffset, widthSlice, heightSlice);

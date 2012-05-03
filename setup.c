@@ -9,11 +9,27 @@ file encoding: 0 - barrier/unusable spot
 3 - exit location
 */
 void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goals, short *** board, short *** blank, unsigned int * width, unsigned int * height){
-	FILE * fd = fopen(fileName, "r");
+	MPI_File fd;
 	unsigned int i, j;
+	unsigned int buf[2];
 	boid * newBoid = NULL;
 
-	fscanf(fd, "%u %u", width, height);
+	//Open the file throughout all processors
+	MPI_File_open(MPI_COMM_WORLD, fileName, MPI_MODE_RDONLY, MPI_INFO_NULL, &fd);
+
+	//MUST USE BINARY FILES FOR MPI VERSION
+	MPI_File_read_all(fd, buf, 2, MPI_UNSIGNED, MPI_STATUS_IGNORE);
+
+
+	*weight = buf[0];
+	*height = buf[1];
+
+
+	widthSlice = mapwidth;
+	heightSlice = mapheight / numranks;
+	widthOffset = 0;
+	heightOffset = heightSlice * rank;
+
 
 	(*board) = (short **) calloc(*width, sizeof(short *));
 	(*blank) = (short **) calloc(*width, sizeof(short *));
@@ -21,29 +37,39 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 		(*board)[i] = (short *) calloc(*height, sizeof(short));
 		(*blank)[i] = (short *) calloc(*height, sizeof(short));
 	}
-	
+
+	readArr = (short *) calloc(*width, sizeof(short));
+
+	//Read in the entire board but only add boids that we are looking out for to our list of boids
 	//Go through parsing the file
 	for(j = 0; j < *height; j++){
+		MPI_File_read_all(fd, readArr, (int) (*width), MPI_SHORT, MPI_STATUS_IGNORE);
 		for(i = 0; i < *width; i++){
-			fscanf(fd, "%1hd", &((*board)[i][j]));
-			(*blank)[i][j] = (*board)[i][j];
-			if((*board)[i][j] == 2){
+			(*board)[i][j] = readArr[i];
+			(*blank)[i][j] = readArr[i];
+			if((*board)[i][j] == 2 ){
 				(*blank)[i][j] = 1;
-				newBoid = (boid *) calloc(1, sizeof(boid));
-				newBoid->xpos = i;
-				newBoid->ypos = j;
-				newBoid->active = 1;
-				newBoid->velocity.x = 0;
-				newBoid->velocity.y = 0;
-				newBoid->id = boids->size;
-				boidInsert(boids, newBoid);
-				newBoid = NULL;
-			}else if((*board)[i][j] == 3){
+				if(j >= heightOffset && j < heightOffset+heightSlice){
+					newBoid = (boid *) calloc(1, sizeof(boid));
+					newBoid->xpos = i;
+					newBoid->ypos = j;
+					newBoid->active = 1;
+					newBoid->velocity.x = 0;
+					newBoid->velocity.y = 0;
+					newBoid->id = boids->size;
+					boidInsert(boids, newBoid);
+					newBoid = NULL;
+				}else{
+					(*board)[i][j] = 1;
+				}
+			}
+			if((*board)[i][j] == 3){
 				//Should add to a list of exits so that its easy to figure out closest exit don't need to go through entire map
 				addGoal(goals, i, j);
 			}
 		}
 	}
+	MPI_File_close(&fd);
 }
 
 void addGoal(goalContainer * goals, int x, int y){
