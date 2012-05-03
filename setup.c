@@ -35,6 +35,7 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 				newBoid->active = 1;
 				newBoid->velocity.x = 0;
 				newBoid->velocity.y = 0;
+				newBoid->id = boids->size;
 				boidInsert(boids, newBoid);
 				newBoid = NULL;
 			}else if((*board)[i][j] == 3){

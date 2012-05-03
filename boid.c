@@ -15,7 +15,7 @@ int boidInsert(boidContainer * container, boid * insert){
 			exit(1);
 		}
 	}
-	
+
 	container->boidArr[container->size] = *insert;
 	++container->size;
 	return 1;
@@ -153,6 +153,26 @@ inline void limitVec(directionVector * limitWhat){
 	}
 }
 
+int inSlice (boid thisBoid, int x, int y, int X, int Y)
+{
+  // check if boid is active
+  if (thisBoid.active == 0)
+   return 0;
+
+  // check boundaries of slice
+  if (thisBoid.xpos < x)
+    return 0;
+  if (thisBoid.xpos >= X)
+    return 0;
+  if (thisBoid.ypos < y)
+    return 0;
+  if (thisBoid.ypos >= Y)
+    return 0;
+
+  // looks good
+  return 1;
+}
+
 void moveBoid(const goalContainer * const goals, boidContainer * boidlist, int index){
 	directionVector exitVec, cohVec, alignVec, averVec, acceleration;
 	int i;
@@ -181,9 +201,11 @@ void moveBoid(const goalContainer * const goals, boidContainer * boidlist, int i
 	boidlist->boidArr[index].xpos += acceleration.x;
 	boidlist->boidArr[index].ypos += acceleration.y;
 
+	// check if we hit goal
 	for(i = 0; i < goals->size; i++){
 		if(boidlist->boidArr[index].xpos == goals->pos[i][0] && boidlist->boidArr[index].ypos == goals->pos[i][1]){
 			boidlist->boidArr[index].active = 0;
+			printf("goal!\n");
 		}
 	}
 	

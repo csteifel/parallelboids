@@ -24,6 +24,7 @@ typedef struct directionVector directionVector;
 
 
 struct boid {
+        int id;
 	int xpos;
 	int ypos;
 	directionVector velocity;
@@ -39,7 +40,7 @@ struct boidContainer {
 	size_t alloc;
 };
 
-typedef struct boidContainer boidContainer;
+//typedef struct boidContainer boidContainer;
 
 
 //List prototypes for boid acceleration calculation
@@ -51,6 +52,8 @@ directionVector alignment(const boidContainer * const boidlist, int index);
 directionVector moveToExit(const goalContainer * const goals, const boidContainer * const boidlist, int index);
 
 directionVector getGoalDistance(int goalx, int goaly, const boid * const b);
+
+int inSlice(boid thisBoid, int x, int y, int X, int Y);
 
 #define CONTAINEREXTEND 10
 

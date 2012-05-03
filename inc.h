@@ -8,6 +8,7 @@
 #include <math.h>
 #include <pthread.h>
 #include <string.h>
+#include <mpi.h>
 #include "setup.h"
 #include "boid.h"
 #endif
