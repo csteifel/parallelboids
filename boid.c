@@ -205,7 +205,7 @@ void moveBoid(const goalContainer * const goals, boidContainer * boidlist, int i
 	for(i = 0; i < goals->size; i++){
 		if(boidlist->boidArr[index].xpos == goals->pos[i][0] && boidlist->boidArr[index].ypos == goals->pos[i][1]){
 			boidlist->boidArr[index].active = 0;
-			printf("goal!\n");
+			printf("boid %d: goal!\n",boidlist->boidArr[index].id);
 		}
 	}
 	
