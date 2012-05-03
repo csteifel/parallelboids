@@ -329,6 +329,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	      }
 	  }
 	
+
 	// barrier
 	MPI_Barrier(MPI_COMM_WORLD);
 	
