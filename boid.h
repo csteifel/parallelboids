@@ -45,10 +45,10 @@ struct boidContainer {
 
 //List prototypes for boid acceleration calculation
 //All should return directional vectors for acceleration calculation
-void moveBoid(const goalContainer * const goals, boidContainer * boidlist, boidContainer * effectingBoids, int index);
-directionVector cohesion(const boidContainer * const boidlist, int index);
-directionVector aversion(const boidContainer * const boidlist, int index);
-directionVector alignment(const boidContainer * const boidlist, int index);
+void moveBoid(const goalContainer * const goals, boidContainer * boidlist, const boidContainer * const effectingBoids, int index);
+directionVector cohesion(const boidContainer * const boidlist,const boidContainer * const effectList, int index);
+directionVector aversion(const boidContainer * const boidlist,const boidContainer * const effectList, int index);
+directionVector alignment(const boidContainer * const boidlist,const boidContainer * const effectList, int index);
 directionVector moveToExit(const goalContainer * const goals, const boidContainer * const boidlist, int index);
 
 directionVector getGoalDistance(int goalx, int goaly, const boid * const b);

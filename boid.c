@@ -24,7 +24,12 @@ int boidInsert(boidContainer * container, boid * insert){
 }
 
 int boidRemove(boidContainer * container, int index){
-	return 0;
+	int i;
+	for(i = index; i+1 < container->size; i++){
+		container->boidArr[i] = container->boidArr[i+1];
+	}
+	container->size--;
+	return 1;
 }
 
 //Calculate the vector to move towards the exit
@@ -49,7 +54,7 @@ directionVector moveToExit(const goalContainer * const goals, const boidContaine
 }
 
 //Try to keep boids away from each other so they don't colllide
-directionVector aversion(const boidContainer * const boidlist, int index){
+directionVector aversion(const boidContainer * const boidlist, const boidContainer * const effectList, int index){
 	directionVector aversionVec;
 	int i;
 
@@ -66,12 +71,19 @@ directionVector aversion(const boidContainer * const boidlist, int index){
 		}
 	}
 
+	for(i = 0; i < effectList->size; i++){
+		if((abs(boidlist->boidArr[index].xpos - effectList->boidArr[i].xpos) + abs(boidlist->boidArr[index].ypos - effectList->boidArr[i].ypos)) < SEPARATIONWIDTH){
+			aversionVec.x += boidlist->boidArr[i].xpos - boidlist->boidArr[index].xpos;
+			aversionVec.y += boidlist->boidArr[i].ypos - boidlist->boidArr[index].ypos;
+		}
+	}
+
 	return aversionVec;
 }
 
 
 //Try to move towards the center of the group
-directionVector alignment(const boidContainer * const boidlist, int index){
+directionVector alignment(const boidContainer * const boidlist, const boidContainer * const effectList, int index){
 	directionVector alignVec;
 	int i, count = 0;
 	alignVec.x = 0;
@@ -90,7 +102,16 @@ directionVector alignment(const boidContainer * const boidlist, int index){
 		}
 		
 	}
-
+	for(i = 0; i < effectList->size; i++){
+		
+		if((abs(boidlist->boidArr[index].xpos - effectList->boidArr[i].xpos) + abs(boidlist->boidArr[index].ypos - effectList->boidArr[i].ypos)) < ALIGNWIDTH){
+			//If the boid we are looking at is within a certain distance then try to align with it
+			alignVec.x += boidlist->boidArr[index].velocity.x;
+			alignVec.y += boidlist->boidArr[index].velocity.y;
+			count ++;
+		}
+		
+	}
 	//Take the average
 	if(count > 0){
 		alignVec.x = alignVec.x/count;
@@ -102,7 +123,7 @@ directionVector alignment(const boidContainer * const boidlist, int index){
 
 
 //Try to steer towards the middle of the group
-directionVector cohesion(const boidContainer * const boidlist, int index){
+directionVector cohesion(const boidContainer * const boidlist, const boidContainer * const effectList, int index){
 	directionVector cohesVec;
 	int i, count = 0;
 	
@@ -124,6 +145,17 @@ directionVector cohesion(const boidContainer * const boidlist, int index){
 		
 	}
 
+	for(i = 0; i < effectList->size; i++){
+		
+		if((abs(boidlist->boidArr[index].xpos - effectList->boidArr[i].xpos) + abs(boidlist->boidArr[index].ypos - effectList->boidArr[i].ypos)) < COHEREWIDTH){
+			//If the boid we are looking at is within a certain distance then try to align with it
+			cohesVec.x += boidlist->boidArr[index].xpos;
+			cohesVec.y += boidlist->boidArr[index].ypos;
+			count++;
+		}
+		
+		
+	}
 	//Take the average location of boids
 	if(count > 0){
 		cohesVec.x = cohesVec.x/count - boidlist->boidArr[index].xpos;
@@ -136,22 +168,22 @@ directionVector cohesion(const boidContainer * const boidlist, int index){
 
 
 //Add vector quantities with a weight
-inline void addVector(directionVector * addTo, const directionVector * const source, int weight){
+void addVector(directionVector * addTo, const directionVector * const source, int weight){
 	addTo->x += source->x * weight;
 	addTo->y += source->y * weight;
 }
 
 
 //Limit boid movement to one block in one direction
-inline void limitVec(directionVector * limitWhat){
+void limitVec(directionVector * limitWhat){
 	if(limitWhat->x == 0 && limitWhat->y == 0){
 		//Do nothing
 	}else if(abs(limitWhat->x) > abs(limitWhat->y)){
 		limitWhat->y = 0;
-		limitWhat->x = limitWhat->x / abs(limitWhat->x);
+		limitWhat->x = (limitWhat->x < 0) ? -1 : 1;
 	}else{
 		limitWhat->x = 0;
-		limitWhat->y = limitWhat->y / abs(limitWhat->y);
+		limitWhat->y = (limitWhat->y < 0) ? -1 : 1;
 	}
 }
 
@@ -175,9 +207,8 @@ int inSlice (boid thisBoid, int x, int y, int X, int Y)
   return 1;
 }
 
-void moveBoid(const goalContainer * const goals, boidContainer * boidlist, boidContainer * effectingBoids, int index){
+void moveBoid(const goalContainer * const goals, boidContainer * boidlist,const boidContainer * const effectingBoids, int index){
 	directionVector exitVec, cohVec, alignVec, averVec, acceleration;
-	int i;
 
 	acceleration.x = 0;
 	acceleration.y = 0;
@@ -185,30 +216,26 @@ void moveBoid(const goalContainer * const goals, boidContainer * boidlist, boidC
 
 	//Could possibly make these all execute in parallel as well
 	exitVec = moveToExit(goals, boidlist, index);
-	cohVec = cohesion(boidlist, index);
-	alignVec = alignment(boidlist, index);
-	averVec = aversion(boidlist, index);
+	cohVec = cohesion(boidlist, effectingBoids, index);
+	alignVec = alignment(boidlist, effectingBoids, index);
+	averVec = aversion(boidlist, effectingBoids, index);
 
 
 	//Add up vectors with weights
 	addVector(&acceleration, &exitVec, 3);
 	addVector(&acceleration, &cohVec, 1);
 	addVector(&acceleration, &alignVec, 1);
-	addVector(&acceleration, &averVec, 2);
+	addVector(&acceleration, &averVec, 1);
 
 	//Limit the vector to required speed
 	limitVec(&acceleration);
+	
+	//printf("%d %d %d %d %d\n", index, boidlist->boidArr[index].xpos, boidlist->boidArr[index].ypos, acceleration.x, acceleration.y);
 
 	boidlist->boidArr[index].velocity = acceleration;
-	boidlist->boidArr[index].xpos += acceleration.x;
-	boidlist->boidArr[index].ypos += acceleration.y;
+	boidlist->boidArr[index].xpos += boidlist->boidArr[index].velocity.x;
+	boidlist->boidArr[index].ypos += boidlist->boidArr[index].velocity.y;
 
-	// check if we hit goal
-	for(i = 0; i < goals->size; i++){
-		if(boidlist->boidArr[index].xpos == goals->pos[i][0] && boidlist->boidArr[index].ypos == goals->pos[i][1]){
-			boidlist->boidArr[index].active = 0;
-		}
-	}
 	
 }
 
