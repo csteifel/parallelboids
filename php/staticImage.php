@@ -3,13 +3,15 @@
 	set_time_limit (600);
 	
 	$pixels_per_character = 20;
-	$file = './concentric.jpg';
+	$file = 'image.png';
 	list($width, $height) = getimagesize($file);
 
-	$im = imagecreatefromjpeg($file);
+	$im = imagecreatefrompng($file);
 
 	$output = "";		
 
+	if($im)
+	{
 	for($y = 0; $y < $height; $y++)
 	{	
 		for($x = 0; $x < $width; $x++)
@@ -37,6 +39,7 @@
 			}
 		}
 		$output .= "\n";
+	}
 	}
 	echo $output;
 ?>
