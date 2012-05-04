@@ -3,7 +3,7 @@
 //Boid algorithm threaded approach
 
 //Start out with a limit on iterations until goal achievement is programmed
-#define ITERATIONS 20
+#define ITERATIONS 500
 
 
 //Find the closest open spot on the map and place the boid there
@@ -79,7 +79,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 		MPI_Isend(&sendAboveBoids.size, 1, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &sendAboveRequest[0]);
 
 		if(sendAboveBoids.size > 0){
-			MPI_Isend(&sendAboveBoids.boidArr, sendAboveBoids.size * sizeof(boid), MPI_BYTE, rank-1, 2, MPI_COMM_WORLD, &sendAboveRequest[1]);
+			MPI_Isend(sendAboveBoids.boidArr, sendAboveBoids.size * sizeof(boid), MPI_BYTE, rank-1, 2, MPI_COMM_WORLD, &sendAboveRequest[1]);
 		}
 	}
 
@@ -98,7 +98,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 
 		MPI_Isend(&sendBelowBoids.size, 1, MPI_INT, rank+1, 1, MPI_COMM_WORLD, &sendBelowRequest[0]);
 		if(sendBelowBoids.size > 0){
-			MPI_Isend(&sendBelowBoids.boidArr, sendBelowBoids.size * sizeof(boid), MPI_BYTE, rank+1, 2, MPI_COMM_WORLD, &sendBelowRequest[1]);
+			MPI_Isend(sendBelowBoids.boidArr, sendBelowBoids.size * sizeof(boid), MPI_BYTE, rank+1, 2, MPI_COMM_WORLD, &sendBelowRequest[1]);
 		}
 	}
 
@@ -186,12 +186,12 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	sendBelowBoids.alloc = 10;
 	sendBelowBoids.boidArr = (boid *) calloc(sendBelowBoids.alloc, sizeof(boid));
 
-	printf("%d %d\n", heightOffset, heightSlice);
+	//printf("%d %d\n", heightOffset, heightSlice);
 	for(i = 0; i < boidlist->size; i++){
-		if(rank == 1)
-			printf("Boid pos: %d %d %d %d %d\n", i, boidlist->boidArr[i].xpos, boidlist->boidArr[i].ypos, rank, boidlist->boidArr[i].ypos  >= heightOffset+heightSlice);
+		//if(rank == 1)
+			//printf("Boid pos: %d %d %d %d %d\n", i, boidlist->boidArr[i].xpos, boidlist->boidArr[i].ypos, rank, boidlist->boidArr[i].ypos  >= heightOffset+heightSlice);
 		if(boidlist->boidArr[i].ypos < heightOffset){
-			printf("GOING\n");
+			//printf("GOING\n");
 			//Needs to go to process above me
 			boidInsert(&sendAboveBoids, &boidlist->boidArr[i]);
 
@@ -217,18 +217,18 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	if(rank != 0){
 		MPI_Isend(&sendAboveBoids.size, 1, MPI_INT, rank-1, 3, MPI_COMM_WORLD, &sendAboveRequest[0]);
 		for(i = 0; i < sendAboveBoids.size; i++){
-			printf("ABOUT TO SEND: %d %d %d\n", i, sendAboveBoids.boidArr[i].xpos, sendAboveBoids.boidArr[i].ypos);
+		//	printf("ABOUT TO SEND: %d %d %d\n", i, sendAboveBoids.boidArr[i].xpos, sendAboveBoids.boidArr[i].ypos);
 		}
 		if(sendAboveBoids.size > 0){
-			printf("SENDING %d\n", sendAboveBoids.size * sizeof(boid));
-			MPI_Isend(&sendAboveBoids.boidArr, sendAboveBoids.size * sizeof(boid), MPI_BYTE, rank-1, 4, MPI_COMM_WORLD, &sendAboveRequest[1]);
+			//printf("SENDING %d\n", sendAboveBoids.size * sizeof(boid));
+			MPI_Isend(sendAboveBoids.boidArr, sendAboveBoids.size * sizeof(boid), MPI_BYTE, rank-1, 4, MPI_COMM_WORLD, &sendAboveRequest[1]);
 		}
 	}
 	
 	if(rank != numranks -1){
 		MPI_Isend(&sendBelowBoids.size, 1, MPI_INT, rank+1, 3, MPI_COMM_WORLD, &sendBelowRequest[0]);
 		if(sendBelowBoids.size > 0)
-			MPI_Isend(&sendBelowBoids.boidArr, sendBelowBoids.size * sizeof(boid), MPI_BYTE, rank+1, 4, MPI_COMM_WORLD, &sendBelowRequest[1]);
+			MPI_Isend(sendBelowBoids.boidArr, sendBelowBoids.size * sizeof(boid), MPI_BYTE, rank+1, 4, MPI_COMM_WORLD, &sendBelowRequest[1]);
 	}
 	
 
@@ -266,7 +266,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 		}
 	}
 
-	printf("Boid size: %d %d\n", boidlist->size, rank);
+	//printf("Boid size: %d %d\n", boidlist->size, rank);
 	//Recieve incoming boids
 
 	if(rank != 0){
@@ -318,13 +318,13 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	}
 
 
-	printf("Boid size2: %d %d\n", boidlist->size, rank);
+	//printf("Boid size2: %d %d\n", boidlist->size, rank);
 
 	for(i = 0; i < recvBelowBoids.size && rank != numranks -1 ; i++){
-		printf("INSERT %d\n", recvBelowBoids.boidArr[i].xpos);
+		//printf("INSERT %d\n", recvBelowBoids.boidArr[i].xpos);
 		boidInsert(boidlist, &recvBelowBoids.boidArr[i]);
 	}
-	printf("Boid size3: %d %d\n", boidlist->size, rank);
+	//printf("Boid size3: %d %d\n", boidlist->size, rank);
 
 	for(i = 0; i < boidlist->size; i++){
 		if(boidlist->boidArr[i].active == 1){
@@ -345,16 +345,16 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 		memcpy((*map)[i], (*blankMap)[i], height * sizeof(short));
 	}
 
-	printf("SIZE: %d %d\n", boidlist->size, rank);
-	printf("STARTING RECONCILE %d\n", rank);
+	//printf("SIZE: %d %d\n", boidlist->size, rank);
+	//printf("STARTING RECONCILE %d\n", rank);
 	//We need to reconcile the map now based on boid positions and check for people on top of each other
 	for(i = 0; i < boidlist->size; i++)
 	  {
 	    int location[2];
 	 	
 		if(rank == 0){
-			printf("%d\n", boidlist->boidArr[i].xpos);
-			printf("Itr %d\n", i);
+			//printf("%d\n", boidlist->boidArr[i].xpos);
+			//printf("Itr %d\n", i);
 		}
 	    // if boid is active and in our slice
 	    //if(boidlist->boidArr[i].active == 1)
@@ -391,11 +391,11 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 
 	      }
 	  
-	  printf("RECONCILED %d\n", rank);
+	  //printf("RECONCILED %d\n", rank);
 	
 	// return/repeat
 	MPI_Allreduce(&count, &total, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-	printf("Count %d total %d\n", count, total);
+	//printf("Count %d total %d\n", count, total);
 	return total;
 }
 
@@ -482,9 +482,6 @@ int main(int argc, char * argv[]){
 	// so now loop through the number of iterations
 	for(i = 0; i < ITERATIONS; i++){
 		counter = step(&container, &goals, &map, &blankMap, mapwidth, mapheight);
-		if(rank == 0 && 1){
-			printf("Step %d %d\n", i, counter);
-		}
 		if(counter == 0){
 			break;
 		}
