@@ -418,8 +418,6 @@ int main(int argc, char * argv[]){
 	char * fileName = NULL;
 	short ** map = NULL;
 	short ** blankMap = NULL;
-	boid test[1];
-	MPI_Request bs;
 	unsigned int mapwidth, mapheight, i;
 	int counter;
 	
@@ -436,15 +434,6 @@ int main(int argc, char * argv[]){
 		exit(1);
 	}
 
-	/*if(rank == 0){
-		test[0].xpos = 10; test[0].ypos = 20;
-		MPI_Isend(&test[0], sizeof(boid), MPI_BYTE, 1, 99, MPI_COMM_WORLD, &bs);
-	}
-
-	if(rank == 1){
-		MPI_Recv(&test, sizeof(boid), MPI_BYTE, 0, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		printf("CRAP %d %d\n", test.xpos, test.ypos);
-	}*/
 
 	//Initialize containers
 	container.size = 0;
