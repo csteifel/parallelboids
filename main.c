@@ -6,6 +6,8 @@
 #define ITERATIONS 9000
 
 
+unsigned long long procSpeed = 2530000000;
+
 //Find the closest open spot on the map and place the boid there
 void findClosest(short *** map, int x, int y, int width, int height, int * positions){
 	int lookRadius = 1;
@@ -58,12 +60,14 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	if(rank != 0){
 		recvTime = rdtsc();
 		MPI_Irecv(&numIncoming[0], 1, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &recvRequest[0]);
+		recvAmount += sizeof(int);
 		recvTimeTotal += rdtsc() - recvTime;
 	}
 	//If the bottom row of the map then don't recieve from the bottom
 	if(rank != numranks -1 ){
 		recvTime = rdtsc();
 		MPI_Irecv(&numIncoming[1], 1, MPI_INT, rank+1, 1, MPI_COMM_WORLD, &recvRequest[1]);
+		recvAmount += sizeof(int);
 		recvTimeTotal += rdtsc() - recvTime;
 	}
 
@@ -82,9 +86,10 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 
 		sendTime = rdtsc();
 		MPI_Isend(&sendAboveBoids.size, 1, MPI_INT, rank-1, 1, MPI_COMM_WORLD, &sendAboveRequest[0]);
-
+		sendAmount += sizeof(int);
 		if(sendAboveBoids.size > 0){
 			MPI_Isend(sendAboveBoids.boidArr, sendAboveBoids.size * sizeof(boid), MPI_BYTE, rank-1, 2, MPI_COMM_WORLD, &sendAboveRequest[1]);
+			sendAmount += sendAboveBoids.size * sizeof(boid);
 		}
 		sendTimeTotal += rdtsc() - sendTime;
 	}
@@ -104,8 +109,10 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 
 		sendTime = rdtsc();
 		MPI_Isend(&sendBelowBoids.size, 1, MPI_INT, rank+1, 1, MPI_COMM_WORLD, &sendBelowRequest[0]);
+		sendAmount += sizeof(int);
 		if(sendBelowBoids.size > 0){
 			MPI_Isend(sendBelowBoids.boidArr, sendBelowBoids.size * sizeof(boid), MPI_BYTE, rank+1, 2, MPI_COMM_WORLD, &sendBelowRequest[1]);
+			sendAmount += sendBelowBoids.size * sizeof(boid);
 		}
 		sendTimeTotal += rdtsc() - sendTime;
 	}
@@ -123,6 +130,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 				recvAboveBoids.alloc = numIncoming[0];
 				recvAboveBoids.boidArr = (boid *) calloc(numIncoming[0], sizeof(boid));
 				MPI_Recv(recvAboveBoids.boidArr,  sizeof(boid) * numIncoming[0],MPI_BYTE, rank-1, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				recvAmount += sizeof(boid) * numIncoming[0];
 				break;
 			}
 		}
@@ -144,6 +152,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 				recvBelowBoids.alloc = numIncoming[1];
 				recvBelowBoids.boidArr = (boid *) calloc(numIncoming[1], sizeof(boid));
 				MPI_Recv(recvBelowBoids.boidArr, sizeof(boid) * numIncoming[1],MPI_BYTE, rank+1, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				recvAmount += sizeof(boid) * numIncoming[1];
 				break;
 			}
 		}
@@ -222,12 +231,14 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	if(rank != 0){
 		recvTime = rdtsc();
 		MPI_Irecv(&numIncoming[0], 1, MPI_INT, rank-1, 3, MPI_COMM_WORLD, &recvRequest[0]);
+		recvAmount += sizeof(int);
 		recvTimeTotal += rdtsc() - recvTime;
 	}
 	//If the bottom row of the map then don't recieve from the bottom
 	if(rank != numranks - 1){
 		recvTime = rdtsc();
 		MPI_Irecv(&numIncoming[1], 1, MPI_INT, rank+1, 3, MPI_COMM_WORLD, &recvRequest[1]);
+		recvAmount += sizeof(int);
 		recvTimeTotal += rdtsc() - recvTime;
 	}
 	
@@ -273,16 +284,22 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	if(rank != 0){
 		sendTime = rdtsc();
 		MPI_Isend(&sendAboveBoids.size, 1, MPI_INT, rank-1, 3, MPI_COMM_WORLD, &sendAboveRequest[0]);
-		if(sendAboveBoids.size > 0)
+		sendAmount += sizeof(int);
+		if(sendAboveBoids.size > 0){
 			MPI_Isend(sendAboveBoids.boidArr, sendAboveBoids.size * sizeof(boid), MPI_BYTE, rank-1, 4, MPI_COMM_WORLD, &sendAboveRequest[1]);
+			sendAmount += sendAboveBoids.size * sizeof(boid);
+		}
 		sendTimeTotal += rdtsc() - sendTime;
 	}
 	
 	if(rank != numranks -1){
 		sendTime = rdtsc();
 		MPI_Isend(&sendBelowBoids.size, 1, MPI_INT, rank+1, 3, MPI_COMM_WORLD, &sendBelowRequest[0]);
-		if(sendBelowBoids.size > 0)
+		sendAmount += sizeof(int);
+		if(sendBelowBoids.size > 0){
 			MPI_Isend(sendBelowBoids.boidArr, sendBelowBoids.size * sizeof(boid), MPI_BYTE, rank+1, 4, MPI_COMM_WORLD, &sendBelowRequest[1]);
+			sendAmount += sendBelowBoids.size * sizeof(boid);
+		}
 		sendTimeTotal += rdtsc() - sendTime;
 	}
 	
@@ -341,6 +358,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 				recvAboveBoids.alloc = numIncoming[0];
 				recvAboveBoids.boidArr = (boid *) calloc(numIncoming[0], sizeof(boid));
 				MPI_Recv(recvAboveBoids.boidArr, sizeof(boid) * numIncoming[0], MPI_BYTE, rank-1, 4, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				recvAmount += sizeof(boid) * numIncoming[0];
 				break;
 			}
 		}
@@ -364,6 +382,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 				recvBelowBoids.alloc = numIncoming[1];
 				recvBelowBoids.boidArr = (boid *) calloc(numIncoming[1], sizeof(boid));
 				MPI_Recv(recvBelowBoids.boidArr, sizeof(boid) * numIncoming[1], MPI_BYTE, rank+1, 4, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				recvAmount += sizeof(boid) * numIncoming[1];
 				break;
 			}
 		}
@@ -476,6 +495,8 @@ int main(int argc, char * argv[]){
 	int counter;
 	sendTimeTotal = 0;
 	recvTimeTotal = 0;
+	sendAmount = 0;
+	recvAmount = 0;
 
 	execTime = rdtsc();
 	
@@ -507,7 +528,7 @@ int main(int argc, char * argv[]){
 	setupSimulation(fileName, &container, &goals, &map, &blankMap, &mapwidth, &mapheight);
 	setupTime = rdtsc() - setupTime;
 	if(rank == 0)
-		printf("Setup time: %llu\n", setupTime);
+		printf("Setup time: %lf\n", (double) setupTime / procSpeed);
 	
 	// only let rank 0 output init stuff
 	/*if (rank == 0 && 0)
@@ -536,7 +557,7 @@ int main(int argc, char * argv[]){
 		stepTime = rdtsc() - stepTime;
 		MPI_Allreduce(&stepTime, &stepTotal, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 		if(rank == 0)
-			printf("Step time average: %d %llu\n", i, stepTotal);
+			printf("Step time average: %d %lf\n", i, (double) stepTotal/numranks / procSpeed);
 		if(counter == 0){
 			break;
 		}
@@ -544,13 +565,25 @@ int main(int argc, char * argv[]){
 	if (rank == 0)
 	  printf("Completed in %d steps\n", i);
 	
-
 	
-	MPI_Finalize();
 	execTime = rdtsc() - execTime;
 	if(rank == 0)
-		printf("Exec time: %llu\n", execTime);
+		printf("Exec time: %lf\n", (double) execTime / procSpeed);
+	
+	MPI_Allreduce(&sendTime, &sendTimeTotal, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Allreduce(&sendTime, &sendTimeTotal, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 
+
+	MPI_Allreduce(&sendAmount, &sendAmountTotal, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Allreduce(&recvAmount, &recvAmountTotal, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+	
+	if(rank == 0){
+		printf("Total sent %llu average time %lf\n", sendAmountTotal, (double) sendTimeTotal/numranks / procSpeed);
+		printf("Total receive %llu average time %lf\n", recvAmountTotal, (double) recvTimeTotal/numranks / procSpeed);
+	}
+
+	MPI_Finalize();
+	
 
 	return 0;
 }
