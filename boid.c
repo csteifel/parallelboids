@@ -1,10 +1,27 @@
 #include "inc.h"
 
-
 /* BOID FUNCTIONS
 	ALL FUNCTIONS IN THIS FILE SHOULD REENTRANT
 */
 
+
+int wallInsert(wallContainer * walls, boidWall * insert)
+{
+  //Check for need to extend container                                                                                                                  
+  if(walls->size == walls->alloc){
+    walls->alloc += CONTAINEREXTEND;
+
+    if((walls->wallArr = (boidWall *) realloc(walls->wallArr, walls->alloc * sizeof(boidWall))) == NULL){
+      fprintf(stderr, "Error extending boidWall container, quitting...\n");
+      exit(1);
+    }
+  }
+
+  walls->wallArr[walls->size] = *insert;
+  ++walls->size;
+  return 1;
+
+}
 
 
 int boidInsert(boidContainer * container, boid * insert){
@@ -53,8 +70,8 @@ directionVector moveToExit(const goalContainer * const goals, const boidContaine
 	return exitVector;
 }
 
-//Try to keep boids away from each other so they don't colllide
-directionVector aversion(const boidContainer * const boidlist, const boidContainer * const effectList, int index){
+//Try to keep boids away from each other and walls because collliding is never any fun
+directionVector aversion(const boidContainer * const boidlist, wallContainer * wallList, const boidContainer * const effectList, int index){
 	directionVector aversionVec;
 	int i;
 
@@ -76,6 +93,13 @@ directionVector aversion(const boidContainer * const boidlist, const boidContain
 			aversionVec.x += boidlist->boidArr[i].xpos - boidlist->boidArr[index].xpos;
 			aversionVec.y += boidlist->boidArr[i].ypos - boidlist->boidArr[index].ypos;
 		}
+	}
+
+	for(i = 0; i < wallList->size; i++){ // avoid walls
+	  if((abs(boidlist->boidArr[index].xpos - wallList->wallArr[i].xpos) + abs(boidlist->boidArr[index].ypos - wallList->wallArr[i].ypos)) < SEPARATIONWIDTH){
+	    aversionVec.x += wallList->wallArr[i].xpos - boidlist->boidArr[index].xpos;
+	    aversionVec.y += wallList->wallArr[i].ypos - boidlist->boidArr[index].ypos;
+	  }
 	}
 
 	return aversionVec;
@@ -207,7 +231,7 @@ int inSlice (boid thisBoid, int x, int y, int X, int Y)
   return 1;
 }
 
-void moveBoid(const goalContainer * const goals, boidContainer * boidlist,const boidContainer * const effectingBoids, int index){
+void moveBoid(const goalContainer * const goals, wallContainer * wallList, boidContainer * boidlist,const boidContainer * const effectingBoids, int index){
 	directionVector exitVec, cohVec, alignVec, averVec, acceleration;
 
 	acceleration.x = 0;
@@ -218,7 +242,7 @@ void moveBoid(const goalContainer * const goals, boidContainer * boidlist,const 
 	exitVec = moveToExit(goals, boidlist, index);
 	cohVec = cohesion(boidlist, effectingBoids, index);
 	alignVec = alignment(boidlist, effectingBoids, index);
-	averVec = aversion(boidlist, effectingBoids, index);
+	averVec = aversion(boidlist, wallList, effectingBoids, index);
 
 
 	//Add up vectors with weights

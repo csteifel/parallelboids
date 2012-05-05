@@ -30,7 +30,7 @@ void findClosest(short *** map, int x, int y, int width, int height, int * posit
 	}
 }
 
-int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *** blankMap,
+int step(boidContainer * boidlist, wallContainer * walls, goalContainer * goals, short *** map, short *** blankMap,
 	 int width, int height)
 {
         int i, count = 0, total = 0;
@@ -157,7 +157,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 		free(recvBelowBoids.boidArr);
 
 	for(i = 0; i < boidlist->size; i++){
-		moveBoid(goals, boidlist, &newBoids, i);	
+	    moveBoid(goals, walls, boidlist, &newBoids, i);	
 	}
 
 
@@ -414,6 +414,7 @@ void printBoard(short ** map, int mapwidth, int mapheight){
 
 int main(int argc, char * argv[]){
 	boidContainer container;
+	wallContainer walls;
 	goalContainer goals;
 	char * fileName = NULL;
 	short ** map = NULL;
@@ -440,15 +441,18 @@ int main(int argc, char * argv[]){
 	container.alloc = 10;
 	container.boidArr = (boid *) calloc(container.alloc, sizeof(boid));
 	
+	walls.size = 0;
+	walls.alloc = 10;
+	walls.wallArr = (boidWall*) calloc(walls.alloc, sizeof(boidWall));
+
 	goals.size = 0;
 	goals.alloc=10;
 	goals.pos = (int **) calloc(goals.alloc, sizeof(int *));
 
 	//Set up the map and put all the boids in a boid container
-	setupSimulation(fileName, &container, &goals, &map, &blankMap, &mapwidth, &mapheight);
+	setupSimulation(fileName, &container, &walls, &goals, &map, &blankMap, &mapwidth, &mapheight);
 
-	
-	// only let rank 0 output init stuff
+       	// only let rank 0 output init stuff
 	if (rank == 0 && 0)
 	  {
 	    printBoard(map, mapwidth, mapheight);
@@ -470,7 +474,7 @@ int main(int argc, char * argv[]){
 	
 	// so now loop through the number of iterations
 	for(i = 0; i < ITERATIONS; i++){
-		counter = step(&container, &goals, &map, &blankMap, mapwidth, mapheight);
+	        counter = step(&container, &walls, &goals, &map, &blankMap, mapwidth, mapheight);
 		if(counter == 0){
 			break;
 		}

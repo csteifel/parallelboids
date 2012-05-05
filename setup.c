@@ -8,12 +8,13 @@ file encoding: 0 - barrier/unusable spot
 2 - boid in location
 3 - exit location
 */
-void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goals, short *** board, short *** blank, unsigned int * width, unsigned int * height){
+void setupSimulation(char * fileName, boidContainer * boids, wallContainer * walls, goalContainer * goals, short *** board, short *** blank, unsigned int * width, unsigned int * height){
 	MPI_File fd;
 	unsigned int i, j;
 	unsigned int buf[2];
 	short * readArr;
 	boid * newBoid = NULL;
+	boidWall * newWall = NULL;
 
 	//Open the file throughout all processors
 	MPI_File_open(MPI_COMM_WORLD, fileName, MPI_MODE_RDONLY, MPI_INFO_NULL, &fd);
@@ -66,6 +67,13 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 			if((*board)[i][j] == 3){
 				//Should add to a list of exits so that its easy to figure out closest exit don't need to go through entire map
 				addGoal(goals, i, j);
+			}
+			if((*board)[i][j] == 4) // add walls to board
+			{
+			  newWall = (boidWall *) calloc(1, sizeof(boidWall));
+			  newWall->xpos = i;
+			  newWall->ypos = j;
+			  wallInsert(walls,newWall);
 			}
 		}
 	}
