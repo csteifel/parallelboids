@@ -36,6 +36,7 @@ void setupSimulation(char * fileName, boidContainer * boids, goalContainer * goa
 				newBoid->velocity.x = 0;
 				newBoid->velocity.y = 0;
 				boidInsert(boids, newBoid);
+				free(newBoid);
 				newBoid = NULL;
 			}else if((*board)[i][j] == 3){
 				//Should add to a list of exits so that its easy to figure out closest exit don't need to go through entire map

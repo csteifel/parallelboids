@@ -56,5 +56,5 @@ directionVector getGoalDistance(int goalx, int goaly, const boid * const b);
 
 //boidContainer functions
 int boidInsert(boidContainer * container, boid * insert);
-
+int boidRemove(boidContainer * container, int index);
 #endif

@@ -21,8 +21,13 @@ int boidInsert(boidContainer * container, boid * insert){
 	return 1;
 }
 
-int boidRemove(boidContainer * container, int * list){
-	return 0;
+int boidRemove(boidContainer * container, int index){
+	int i;
+	for(i = index; i+1 < container->size; i++){
+		container->boidArr[i] = container->boidArr[i+1];
+	}
+	container->size--;
+	return 1;
 }
 
 //Calculate the vector to move towards the exit
@@ -181,11 +186,6 @@ void moveBoid(const goalContainer * const goals, boidContainer * boidlist, int i
 	boidlist->boidArr[index].xpos += acceleration.x;
 	boidlist->boidArr[index].ypos += acceleration.y;
 
-	for(i = 0; i < goals->size; i++){
-		if(boidlist->boidArr[index].xpos == goals->pos[i][0] && boidlist->boidArr[index].ypos == goals->pos[i][1]){
-			boidlist->boidArr[index].active = 0;
-		}
-	}
 	
 }
 

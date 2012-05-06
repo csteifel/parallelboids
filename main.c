@@ -4,7 +4,11 @@
 
 //Start out with a limit on iterations until goal achievement is programmed
 #define ITERATIONS 9000 
-#define NUMTHREADS 20
+
+
+double procSpeed = 2530000000;
+
+int NUMTHREADS;
 
 struct arguments {
 	boidContainer * boidlist;
@@ -68,7 +72,6 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 		threadCount = boidlist->size;
 	}
 
-
 	//Spawn threads and tell them who they have to deal with
 	for(i = 0; i < threadCount; i++){
 		arguments[i].boidlist = boidlist;
@@ -86,7 +89,6 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 		if(i < extras){
 			arguments[i].finish++;
 		}
-		
 		pthread_create(&threads[i], NULL, threadedMove, (void *) &arguments[i]);
 	}
 
@@ -120,9 +122,14 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 
 				(*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] = 2;
 
-			}else if((*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] == 0){
-				printf("Error in placement\n");
+			}else if((*map)[boidlist->boidArr[i].xpos][boidlist->boidArr[i].ypos] == 3){
+				boidRemove(boidlist, i);
+				i--;
 			}
+
+		}else{
+			boidRemove(boidlist, i);
+			i--;
 		}
 	}
 	
@@ -149,12 +156,16 @@ int main(int argc, char * argv[]){
 	short ** map = NULL;
 	short ** blankMap = NULL;
 	unsigned int mapwidth, mapheight, i, j;
+	unsigned long long execTime, stepTime;
 
-	if(argc == 2){
-		fileName = argv[1];
+
+	execTime = rdtsc();
+
+	if(argc == 3){
+		NUMTHREADS = atoi(argv[1]);
+		fileName = argv[2];
 	}else{
-		//Temporary usage to determine correctness of boid movement
-		fprintf(stderr, "Usage %s <input-file>\n", argv[0]);
+		fprintf(stderr, "Usage %s <num-threads> <input-file>\n", argv[0]);
 		exit(1);
 	}
 
@@ -170,12 +181,12 @@ int main(int argc, char * argv[]){
 	//Set up the map and put all the boids in a boid container
 	setupSimulation(fileName, &container, &goals, &map, &blankMap, &mapwidth, &mapheight);
 
-	for(j = 0; j < mapheight; j++){
+	/*for(j = 0; j < mapheight; j++){
 		for(i = 0; i < mapwidth; i++){
 			printf("%hd", map[i][j]);
 		}
 		printf("\n");
-	}
+	}*/
 		
 	printf("Boid size: %d\n", (int) container.size);
 	for(i = 0; i < container.size; i++){
@@ -188,14 +199,18 @@ int main(int argc, char * argv[]){
 	}
 
 	for(i = 0; i < ITERATIONS; i++){
+		stepTime = rdtsc();
 		if(!step(&container, &goals, &map, &blankMap, mapwidth, mapheight)){
 			break;
 		}
-		printBoard(map, mapwidth, mapheight);
+		stepTime = rdtsc() - stepTime;
+		printf("Step %d completed in %lf\n", i, (double) stepTime / procSpeed);
+	//	printBoard(map, mapwidth, mapheight);
 	}
 
 	printf("Completed in %d steps\n", i);
-
+	execTime = rdtsc() - execTime;
+	printf("Completed in %lf seconds\n", (double) execTime / procSpeed);
 	return 0;
 }
 
