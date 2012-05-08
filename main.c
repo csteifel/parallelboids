@@ -6,7 +6,7 @@
 #define ITERATIONS 9000
 
 
-unsigned long long procSpeed = 2530000000;
+unsigned long long procSpeed = 700000000;
 
 //Find the closest open spot on the map and place the boid there
 void findClosest(short *** map, int x, int y, int width, int height, int * positions){
@@ -53,7 +53,6 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 	newBoids.size = 0;
         newBoids.alloc = 10;
 	newBoids.boidArr = (boid *) calloc(newBoids.alloc, sizeof(boid));
-
 
 	//Post Irecvs for incoming information from top and bottom neighbor
 	//If the top row of the map then don't recieve from the top 
@@ -196,6 +195,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 			}
 		}
 		sendTimeTotal += rdtsc() - sendTime;
+		free(sendAboveBoids.boidArr);
 	}
 	
 	if(rank != numranks -1){
@@ -214,6 +214,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 			}
 		}
 		sendTimeTotal += rdtsc() - sendTime;
+		free(sendBelowBoids.boidArr);
 	}
 
 
@@ -221,7 +222,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 		moveBoid(goals, boidlist, &newBoids, i);	
 	}
 
-
+	free(newBoids.boidArr);
 
 	//Local boids are moved so now we have to figure out if our local boids need to change owner ship and check for incoming changes
 
@@ -322,6 +323,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 			}
 		}
 		sendTimeTotal += rdtsc() - sendTime;
+		free(sendAboveBoids.boidArr);
 	}
 	
 	if(rank != numranks -1){
@@ -340,6 +342,7 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 			}
 		}
 		sendTimeTotal += rdtsc() - sendTime;
+		free(sendBelowBoids.boidArr);
 	}
 
 	//Recieve incoming boids
@@ -412,6 +415,14 @@ int step(boidContainer * boidlist, goalContainer * goals, short *** map, short *
 			i--;
 			continue;
 		}
+	}
+	
+	
+	if(rank != 0 && recvAboveBoids.size > 0){
+		free(recvAboveBoids.boidArr);	
+	}
+	if(rank != numranks - 1 && recvBelowBoids.size > 0){
+		free(recvBelowBoids.boidArr);
 	}
 
 	for(i = 0; i < width; i++){
@@ -523,10 +534,13 @@ int main(int argc, char * argv[]){
 	goals.alloc=10;
 	goals.pos = (int **) calloc(goals.alloc, sizeof(int *));
 
+
 	//Set up the map and put all the boids in a boid container
 	setupTime = rdtsc();
 	setupSimulation(fileName, &container, &goals, &map, &blankMap, &mapwidth, &mapheight);
 	setupTime = rdtsc() - setupTime;
+	if(rank == 0)
+		fprintf(stderr, "SET UP DONE\n");
 	if(rank == 0)
 		printf("Setup time: %lf\n", (double) setupTime / procSpeed);
 	
